@@ -1,0 +1,4 @@
+node_modules/
+build/dist/
+astra-demo-output/
+*.tmp

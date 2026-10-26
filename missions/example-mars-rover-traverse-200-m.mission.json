@@ -1,0 +1,110 @@
+{
+ "format": "astra.mission/1",
+ "mission": {
+  "name": "Mars rover traverse (200 m)",
+  "description": "Drive 200 m across the surface, take measurements and downlink the data.",
+  "objective": {
+   "type": "traverse",
+   "distance": 196,
+   "body": "mars"
+  },
+  "initial": {
+   "type": "surface",
+   "lat": 20,
+   "lon": 30,
+   "heading": 90
+  },
+  "guidance": {
+   "mode": "none",
+   "params": {}
+  },
+  "events": [
+   {
+    "id": "deploy",
+    "name": "Deploy solar panel & antenna",
+    "condition": {
+     "type": "time",
+     "value": 1
+    },
+    "action": {
+     "type": "DEPLOY",
+     "target": "all"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "imaging",
+    "name": "Panoramic imaging",
+    "condition": {
+     "type": "event",
+     "id": "deploy",
+     "delay": 5
+    },
+    "action": {
+     "type": "MEASURE",
+     "instrument": "all",
+     "duration": 60
+    },
+    "status": "pending"
+   },
+   {
+    "id": "leg1",
+    "name": "Drive leg 1 (200 m @ 90°)",
+    "condition": {
+     "type": "event",
+     "id": "imaging",
+     "delay": 2
+    },
+    "action": {
+     "type": "DRIVE",
+     "heading": 90,
+     "distance": 200,
+     "speed": 0.5
+    },
+    "status": "pending"
+   },
+   {
+    "id": "science",
+    "name": "Science measurement",
+    "condition": {
+     "type": "event",
+     "id": "leg1",
+     "delay": 2
+    },
+    "action": {
+     "type": "MEASURE",
+     "instrument": "all",
+     "duration": 120
+    },
+    "status": "pending"
+   },
+   {
+    "id": "downlink",
+    "name": "Downlink data",
+    "condition": {
+     "type": "event",
+     "id": "science",
+     "delay": 1
+    },
+    "action": {
+     "type": "TRANSMIT",
+     "duration": 600
+    },
+    "status": "pending"
+   }
+  ],
+  "faults": [],
+  "environment": {
+   "body": "mars",
+   "terrainSeed": 1,
+   "epoch": 17700
+  },
+  "maxTime": 3600,
+  "meta": {
+   "generator": "roverMission"
+  },
+  "vehicleName": "Rover",
+  "schema": "astra.mission/1",
+  "id": "mis_sutkzv"
+ }
+}

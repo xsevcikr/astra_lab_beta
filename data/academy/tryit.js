@@ -1,0 +1,55 @@
+// "Try this now": one real, ready-made setup per Academy lesson. Pressing the button loads the named example (vehicle + mission, from data/templates.js)
+// and opens the right screen. Nothing is faked: the screens show the real simulation or the real design of that example.
+//   go: 'control' = fly it live, 'designer' = look at / change the design, 'planner' = see the mission and delta-v budget,
+//   'simulation' = launch screen with the readiness review, 'experiments', 'validation'.
+const live = (example, label, tip) => ({ example, go: 'control', params: { autostart: true }, label, tip });
+const design = (example, label, tip) => ({ example, go: 'designer', label, tip });
+const plan = (example, label, tip) => ({ example, go: 'planner', label, tip });
+
+export const TRY_NOW = {
+  'L1-1': design('sounding-rocket', 'Open a simple rocket', 'See what a small rocket is made of.'),
+  'L1-2': live('sounding-rocket', 'Fly through the air layers', 'Watch the air get thinner as it climbs.'),
+  'L1-3': live('small-launcher', 'Fly a rocket live', 'Watch the air push on it during the climb.'),
+  'L1-4': design('small-launcher', 'See the main systems', 'Look at the parts of a real launcher design.'),
+  'L2-1': live('sounding-rocket', 'Watch weight and thrust', 'Lift-off happens when thrust beats weight.'),
+  'L2-2': design('sounding-rocket', 'Check the engine push', 'The engine pushes down, the rocket goes up.'),
+  'L2-3': live('small-launcher', 'Watch speed grow', 'See speed and acceleration change second by second.'),
+  'L2-4': live('small-launcher', 'Watch energy build up', 'Speed and height both add energy.'),
+  'L3-1': design('sounding-rocket', 'Look at the engine', 'Find the thrust number of the engine.'),
+  'L3-2': plan('small-launcher', 'See a delta-v budget', 'Compare what the rocket has with what the mission needs.'),
+  'L3-3': design('small-launcher', 'See two stages', 'Find the stages and drop the empty one in your mind.'),
+  'L3-4': live('sounding-rocket', 'Lift off with spare push', 'Watch the first seconds of a launch.'),
+  'L4-1': design('small-launcher', 'Compare the engines', 'Look at Isp (fuel efficiency) of each stage.'),
+  'L4-2': live('sounding-rocket', 'Fly from air to space', 'Engine push changes as the air thins out.'),
+  'L4-3': design('medium-launcher', 'Open a bigger rocket', 'See bigger engines in a real design.'),
+  'L4-4': design('space-probe', 'Open a space probe', 'Probes carry small engines and solar power.'),
+  'L5-1': live('sounding-rocket', 'Climb through thin air', 'Watch air pressure fall with height.'),
+  'L5-2': live('small-launcher', 'Find Max-Q live', 'Watch the air push hardest about a minute in.'),
+  'L5-3': design('sounding-rocket', 'Check the rocket shape', 'See the nose, body and fins that keep it straight.'),
+  'L5-4': live('medium-launcher', 'Go supersonic', 'Watch Mach number pass 1 and keep climbing.'),
+  'L6-1': live('small-launcher', 'Fly a full ascent', 'See the path from pad to orbit.'),
+  'L6-2': live('small-launcher', 'Watch the gravity turn', 'The rocket tips over slowly as it climbs.'),
+  'L6-3': plan('small-launcher', 'See the launch plan', 'Look at the mission steps and the launch site.'),
+  'L6-4': live('small-launcher', 'Watch the steering', 'See the nose angle stay close to the flight path.'),
+  'L7-1': live('small-launcher', 'Reach orbit live', 'Watch sideways speed build up to about 7.8 km/s.'),
+  'L7-2': live('small-launcher', 'Watch the orbit take shape', 'See the high and low points of the orbit.'),
+  'L7-3': plan('medium-launcher', 'See an orbit plan', 'Open the plan for a 400 km orbit.'),
+  'L7-4': plan('small-launcher', 'Open the mission plan', 'Change the target and see what it needs.'),
+  'L8-1': design('space-probe', 'Open a space probe', 'See structure, power and instruments together.'),
+  'L8-2': design('satellite', 'Open a satellite', 'Find the solar panels and the battery.'),
+  'L8-3': live('satellite', 'Watch a satellite talk', 'See the radio link to the ground station.'),
+  'L8-4': live('moon-lander', 'Land on the Moon live', 'Watch the engine slow the lander down.'),
+  'L9-1': live('small-launcher', 'See the sensors work', 'Watch the numbers a flight computer uses.'),
+  'L9-2': live('small-launcher', 'Watch the control loop', 'The computer keeps correcting the steering.'),
+  'L9-3': live('moon-lander', 'Watch the lander steer', 'Small thrusters and the engine turn the lander.'),
+  'L9-4': live('moon-lander', 'Watch guidance land it', 'The computer picks the path down.'),
+  'L10-1': plan('moon-lander', 'Open a Moon mission plan', 'See the steps and the delta-v they need.'),
+  'L10-2': design('medium-launcher', 'Open the mass list', 'See where every kilogram goes.'),
+  'L10-3': { example: 'small-launcher', go: 'simulation', label: 'Run the launch check', tip: 'The readiness review gives GO or NO-GO.' },
+  'L10-4': live('rover', 'Drive a rover', 'Watch a rover drive on the Moon.'),
+  'L11-1': design('medium-launcher', 'Open a design to compare', 'Change one thing and compare the results.'),
+  'L11-2': design('lander-with-rover', 'Open a lander with a rover', 'Count which parts have a backup.'),
+  'L11-3': { example: 'small-launcher', go: 'experiments', label: 'Open the experiment lab', tip: 'Fly many small variations and see how often it works.' },
+  'L11-4': { example: null, go: 'validation', label: 'Compare with real rockets', tip: 'See how the simulator matches real flights.' },
+};
+export const tryNowFor = (lessonId) => TRY_NOW[lessonId] ?? null;

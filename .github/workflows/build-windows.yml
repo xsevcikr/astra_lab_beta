@@ -1,0 +1,34 @@
+name: Build Windows installer
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install
+        run: npm install
+      - name: Automated tests
+        run: npm test
+      - name: Build installer and portable exe
+        run: npx electron-builder --win nsis portable --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Smoke test of the application from source (real Electron window, hidden)
+        run: npx electron . --smoke-test
+        timeout-minutes: 5
+        continue-on-error: true
+        env:
+          ASTRA_LAB_DATA: ${{ runner.temp }}\astra-smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ASTRA-LAB-Windows
+          path: |
+            build/dist/*.exe
+            build/dist/*.blockmap
+            build/dist/latest.yml

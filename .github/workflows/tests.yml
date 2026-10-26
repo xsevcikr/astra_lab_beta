@@ -1,0 +1,52 @@
+name: Tests
+# Runs on every push and every pull request: all unit and physics tests (Linux and Windows) and the browser UI suites (headless Chromium).
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  unit:
+    name: Unit and physics tests (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 22]
+        exclude:
+          - os: windows-latest
+            node: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # the tests need no packages (plain Node ESM); Electron is only needed to build the installer
+      - name: Unit, physics, validation and mission tests
+        run: npm test
+  ui:
+    name: Browser UI suites (headless Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium (test-only, not saved to package.json)
+        run: |
+          npm install --no-save --ignore-scripts playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: UI suites
+        run: npm run test:ui
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-failure-screenshots
+          path: tests/**/*.png
+          if-no-files-found: ignore

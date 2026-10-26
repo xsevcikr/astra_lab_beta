@@ -1,0 +1,96 @@
+{
+  "name": "astra-lab",
+  "productName": "ASTRA LAB",
+  "version": "2.6.0",
+  "description": "ASTRA LAB - aerospace engineering and simulation laboratory (vehicle designer, physics simulator, mission control, AI engineer)",
+  "author": "ASTRA LAB",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/main/main.cjs",
+  "scripts": {
+    "test": "node scripts/run-tests.mjs",
+    "test:ui": "node scripts/run-ui-tests.mjs",
+    "start": "electron .",
+    "smoke": "electron . --smoke-test",
+    "dist": "electron-builder --win nsis --x64 --publish never",
+    "dist:portable": "electron-builder --win portable --x64 --publish never",
+    "demo": "node scripts/run-demo.mjs",
+    "serve": "node scripts/serve.mjs",
+    "examples": "node scripts/make-examples.mjs",
+    "test:all": "node scripts/run-tests.mjs && node scripts/run-ui-tests.mjs"
+  },
+  "dependencies": {
+    "electron-updater": "5.3.0"
+  },
+  "devDependencies": {
+    "electron": "22.3.27",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "com.astralab.app",
+    "productName": "ASTRA LAB",
+    "directories": {
+      "output": "build/dist"
+    },
+    "files": [
+      "src/**/*",
+      "physics/**/*",
+      "mission/**/*",
+      "ai/**/*",
+      "ui/**/*",
+      "data/**/*",
+      "vehicles/**/*",
+      "missions/**/*",
+      "simulations/**/*",
+      "assets/**/*",
+      "documentation/**/*",
+      "package.json",
+      "!**/*.test.js"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "ASTRA LAB",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
+    "artifactName": "${productName} Setup ${version}.${ext}",
+    "portable": {
+      "artifactName": "${productName} Portable ${version}.${ext}"
+    },
+    "protocols": [
+      {
+        "name": "ASTRA LAB shared design",
+        "schemes": [
+          "astralab"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://updates.invalid/astra-lab/",
+        "channel": "latest"
+      }
+    ]
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

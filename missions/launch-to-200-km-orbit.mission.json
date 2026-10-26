@@ -1,0 +1,216 @@
+{
+ "format": "astra.mission/1",
+ "mission": {
+  "name": "Launch to 200 km orbit",
+  "description": "Ascent from Cape Canaveral (28.57°N, 80.65°W) to a 200 km circular orbit and payload deployment.",
+  "objective": {
+   "type": "orbit",
+   "altitude": 200000,
+   "body": "earth",
+   "tolerance": 0.1
+  },
+  "initial": {
+   "type": "pad",
+   "lat": 28.573,
+   "lon": -80.649,
+   "altitude": 0
+  },
+  "guidance": {
+   "mode": "ascent",
+   "params": {
+    "azimuth": 90,
+    "kickAlt": 250,
+    "kickAngle": 3.5,
+    "kickTime": 6,
+    "closedLoop": false,
+    "insertionAlt": 80000,
+    "targetAlt": 200000,
+    "schedule": {
+     "hF": 100000,
+     "n": 0.45
+    }
+   }
+  },
+  "events": [
+   {
+    "id": "ign1",
+    "name": "Stage 1 ignition",
+    "condition": {
+     "type": "time",
+     "value": 0
+    },
+    "action": {
+     "type": "IGNITE",
+     "group": "stage1"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "sep1",
+    "name": "Stage 1 burnout & separation",
+    "condition": {
+     "type": "propellant",
+     "group": "stage1",
+     "op": "<=",
+     "value": 0.004
+    },
+    "action": {
+     "type": "SEPARATE",
+     "group": "stage1"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "ign2",
+    "name": "Stage 2 ignition",
+    "condition": {
+     "type": "event",
+     "id": "sep1",
+     "delay": 1.2
+    },
+    "action": {
+     "type": "IGNITE",
+     "group": "stage2"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "fairing",
+    "name": "Fairing jettison",
+    "condition": {
+     "type": "all",
+     "conditions": [
+      {
+       "type": "altitude",
+       "op": ">=",
+       "value": 105000
+      },
+      {
+       "type": "dynamicPressure",
+       "op": "<=",
+       "value": 50
+      }
+     ]
+    },
+    "action": {
+     "type": "SEPARATE",
+     "group": "fairing"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "cutoff",
+    "name": "Stage 2 cutoff (target apoapsis)",
+    "condition": {
+     "type": "all",
+     "conditions": [
+      {
+       "type": "event",
+       "id": "ign2"
+      },
+      {
+       "type": "apoapsis",
+       "op": ">=",
+       "value": 200000
+      }
+     ]
+    },
+    "action": {
+     "type": "SHUTDOWN",
+     "group": "stage2"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "circ",
+    "name": "Circularisation burn",
+    "condition": {
+     "type": "all",
+     "conditions": [
+      {
+       "type": "event",
+       "id": "cutoff"
+      },
+      {
+       "type": "timeToApoapsis",
+       "op": "<=",
+       "value": "halfBurn",
+       "burnGroup": "stage2"
+      }
+     ]
+    },
+    "action": {
+     "type": "BURN",
+     "group": "stage2",
+     "direction": "prograde",
+     "dv": "circularize",
+     "until": {
+      "type": "periapsis",
+      "op": ">=",
+      "value": 198000
+     }
+    },
+    "status": "pending"
+   },
+   {
+    "id": "deploy",
+    "name": "Payload deployment",
+    "condition": {
+     "type": "event",
+     "id": "circ",
+     "delay": 20
+    },
+    "action": {
+     "type": "DEPLOY_PAYLOAD",
+     "group": "payload"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "appendages",
+    "name": "Deploy solar arrays & antennas",
+    "condition": {
+     "type": "event",
+     "id": "deploy",
+     "delay": 5
+    },
+    "action": {
+     "type": "DEPLOY",
+     "target": "all"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "sunpoint",
+    "name": "Point arrays at the Sun",
+    "condition": {
+     "type": "event",
+     "id": "deploy",
+     "delay": 6
+    },
+    "action": {
+     "type": "SET_GUIDANCE",
+     "mode": "sun_point"
+    },
+    "status": "pending"
+   }
+  ],
+  "faults": [],
+  "environment": {
+   "body": "earth",
+   "site": {
+    "lat": 28.573,
+    "lon": -80.649
+   }
+  },
+  "maxTime": 1800,
+  "meta": {
+   "generator": "launchMission",
+   "insertion": "hohmann",
+   "azimuth": 90
+  },
+  "vehicleName": "Two-stage launcher (100 kg to 200 km)",
+  "schema": "astra.mission/1",
+  "id": "mis_urgzqx"
+ }
+}

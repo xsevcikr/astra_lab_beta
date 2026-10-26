@@ -1,0 +1,107 @@
+{
+ "format": "astra.mission/1",
+ "mission": {
+  "name": "Moon powered landing",
+  "description": "Deorbit from a 100 km circular orbit and land under closed-loop powered-descent guidance.",
+  "objective": {
+   "type": "landing",
+   "body": "moon"
+  },
+  "initial": {
+   "type": "orbit",
+   "altitude": 100000,
+   "inclination": 0,
+   "u": 0,
+   "attitude": "retrograde"
+  },
+  "guidance": {
+   "mode": "retrograde",
+   "params": {}
+  },
+  "events": [
+   {
+    "id": "deorbit",
+    "name": "Deorbit burn",
+    "condition": {
+     "type": "time",
+     "value": 60
+    },
+    "action": {
+     "type": "BURN",
+     "group": "lander",
+     "direction": "retrograde",
+     "dv": 19.45507321830656,
+     "throttle": 1
+    },
+    "status": "pending"
+   },
+   {
+    "id": "land",
+    "name": "Arm powered descent guidance",
+    "condition": {
+     "type": "event",
+     "id": "deorbit",
+     "delay": 2
+    },
+    "action": {
+     "type": "LAND",
+     "group": "lander",
+     "params": {
+      "safetyMargin": 0.85,
+      "touchdownSpeed": 1
+     }
+    },
+    "status": "pending"
+   },
+   {
+    "id": "legs",
+    "name": "Deploy landing legs",
+    "condition": {
+     "type": "all",
+     "conditions": [
+      {
+       "type": "event",
+       "id": "land"
+      },
+      {
+       "type": "radarAltitude",
+       "op": "<=",
+       "value": 4000
+      }
+     ]
+    },
+    "action": {
+     "type": "DEPLOY",
+     "target": "landing_legs"
+    },
+    "status": "pending"
+   },
+   {
+    "id": "deployApp",
+    "name": "Deploy solar panels & antennas",
+    "condition": {
+     "type": "landed"
+    },
+    "action": {
+     "type": "DEPLOY",
+     "target": "all"
+    },
+    "status": "pending"
+   }
+  ],
+  "faults": [],
+  "environment": {
+   "body": "moon",
+   "terrainSeed": 1,
+   "terrain": {}
+  },
+  "maxTime": 14000,
+  "meta": {
+   "generator": "landerMission",
+   "dvDeorbit": 19.45507321830656
+  },
+  "vehicleName": "Lander",
+  "schema": "astra.mission/1",
+  "id": "mis_js5q0z"
+ }
+}

@@ -1,0 +1,9 @@
+export const G0 = 9.80665;            // m/s^2 standard gravity
+export const C = 299792458;           // m/s speed of light
+export const SIGMA = 5.670374419e-8;  // W/m^2/K^4 Stefan-Boltzmann
+export const K_BOLTZ = 1.380649e-23;  // J/K
+export const R_UNIV = 8.314462618;    // J/mol/K
+export const AU = 1.495978707e11;     // m
+export const SOLAR_CONSTANT = 1361;   // W/m^2 at 1 AU
+export const DEG = Math.PI / 180;
+export const DAY = 86400;

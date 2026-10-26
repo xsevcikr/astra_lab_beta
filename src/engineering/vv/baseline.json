@@ -1,0 +1,19 @@
+{
+  "approved": "2026-10-26T10:28:47.828Z",
+  "values": {
+    "mission.success": 1,
+    "mission.tli.dvMargin": 833.813179723049,
+    "mission.landing.propellantMarginFrac": 0.11424066382435631,
+    "mission.entry.maxG": 8.725725959528653,
+    "mission.tei.propReserveFrac": 0.16970682484775163,
+    "ascent.heavy.propellantRemaining": 92886.73990223987,
+    "ascent.heavy.maxG": 5.107352703673676,
+    "ascent.heavy.periapsisAlt": 184999.53001564555,
+    "descent.seed1.propellantRemaining": 978.2715791736082,
+    "descent.seed1.touchdownVz": 1.0190328609648722,
+    "entry.earth.maxG": 8.583440335358636,
+    "entry.earth.range": 2380512.093431274,
+    "entry.mars.touchdown": 0.7482082287753038,
+    "rendezvous.seed1.dvUsed": 25.671029487420622
+  }
+}
