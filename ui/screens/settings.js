@@ -7,7 +7,7 @@ import { startTour } from '../lib/tour.js';
 import { LEVELS, LEVEL_NAMES, LEVEL_HINTS } from '../../src/core/levels.js';
 import { t, LANGS } from '../../src/core/i18n.js';
 
-export const APP_VERSION = '2.6.0';
+export const APP_VERSION = '2.6.1';
 
 /** Updates (2.3): off until an update address is typed; the installed Windows app checks it, asks before downloading and before restarting. */
 function updatesPanel(app) {

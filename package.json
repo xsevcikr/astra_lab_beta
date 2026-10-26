@@ -1,7 +1,7 @@
 {
   "name": "astra-lab",
   "productName": "ASTRA LAB",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "ASTRA LAB - aerospace engineering and simulation laboratory (vehicle designer, physics simulator, mission control, AI engineer)",
   "author": "ASTRA LAB",
   "license": "MIT",
@@ -70,9 +70,9 @@
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico"
     },
-    "artifactName": "${productName} Setup ${version}.${ext}",
+    "artifactName": "ASTRA-LAB-Setup-${version}.${ext}",
     "portable": {
-      "artifactName": "${productName} Portable ${version}.${ext}"
+      "artifactName": "ASTRA-LAB-Portable-${version}.${ext}"
     },
     "protocols": [
       {
