@@ -304,7 +304,7 @@ test('online AI (OpenAI-compatible format) and graceful fallback to the offline 
 test('no API key is hard-coded anywhere in the source tree', async () => {
   const { readdir, readFile } = await import('node:fs/promises');
   const { join } = await import('node:path');
-  const root = new URL('..', import.meta.url).pathname;
+  const root = (await import('node:url')).fileURLToPath(new URL('..', import.meta.url));   // fileURLToPath: also right on Windows (no "D:\D:")
   const walk = async (d) => { const out = []; for (const e of await readdir(d, { withFileTypes: true })) { if (['node_modules', 'build', '.git'].includes(e.name)) continue; const p = join(d, e.name); if (e.isDirectory()) out.push(...await walk(p)); else if (/\.(js|cjs|mjs|json|html|md|bat|yml)$/.test(e.name)) out.push(p); } return out; };
   for (const f of await walk(root)) {
     if (f.endsWith('ai.test.js')) continue;
