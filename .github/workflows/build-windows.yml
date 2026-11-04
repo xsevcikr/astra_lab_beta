@@ -19,12 +19,7 @@ jobs:
         run: npx electron-builder --win nsis portable --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      - name: Smoke test of the application from source (real Electron window, hidden)
-        run: npx electron . --smoke-test
-        timeout-minutes: 5
-        continue-on-error: true
-        env:
-          ASTRA_LAB_DATA: ${{ runner.temp }}\astra-smoke
+      # upload before the smoke tests so the installer is always downloadable, even when a smoke test fails
       - uses: actions/upload-artifact@v4
         with:
           name: ASTRA-LAB-Windows
@@ -32,3 +27,42 @@ jobs:
             build/dist/*.exe
             build/dist/*.blockmap
             build/dist/latest.yml
+      # GitHub's Windows runners have no real GPU, so the smoke tests use software rendering (users get it automatically after a GPU crash).
+      - name: Smoke test of the application from source (real Electron window, hidden)
+        shell: pwsh
+        timeout-minutes: 5
+        env:
+          ASTRA_LAB_DATA: ${{ runner.temp }}\astra-smoke-src
+          ASTRA_LAB_SOFTWARE_RENDER: "1"
+        run: |
+          $exe = (node -p "require('electron')").Trim()
+          $p = Start-Process -FilePath $exe -ArgumentList '.', '--smoke-test' -Wait -PassThru -NoNewWindow
+          Get-Content "$env:ASTRA_LAB_DATA\logs\astra-lab.log" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "smoke test failed (exit code $($p.ExitCode))" }
+          if (!(Select-String -Path "$env:ASTRA_LAB_DATA\logs\astra-lab.log" -Pattern 'SMOKE OK' -Quiet)) { throw "app exited without reporting SMOKE OK" }
+      - name: Install with the real installer (silent), smoke-test the installed app, uninstall
+        shell: pwsh
+        timeout-minutes: 8
+        env:
+          ASTRA_LAB_DATA: ${{ runner.temp }}\astra-smoke-installed
+          ASTRA_LAB_SOFTWARE_RENDER: "1"
+        run: |
+          $setup = Get-ChildItem build/dist/ASTRA-LAB-Setup-*.exe | Select-Object -First 1
+          Write-Host "Installing $($setup.Name) ($([math]::Round($setup.Length / 1MB)) MB)"
+          $i = Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($i.ExitCode -ne 0) { throw "installer exit code $($i.ExitCode)" }
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs\ASTRA LAB'
+          $exe = Join-Path $dir 'ASTRA LAB.exe'
+          if (!(Test-Path $exe)) { Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Depth 1 | Select-Object FullName; throw "installed exe not found at $exe" }
+          Write-Host "Installed to $dir"
+          $lnk = @("$env:USERPROFILE\Desktop\ASTRA LAB.lnk", "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\ASTRA LAB.lnk") | Where-Object { Test-Path $_ }
+          Write-Host "Shortcuts: $($lnk -join ', ')"
+          $p = Start-Process -FilePath $exe -ArgumentList '--smoke-test' -Wait -PassThru
+          Get-Content "$env:ASTRA_LAB_DATA\logs\astra-lab.log" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "installed app smoke test failed (exit code $($p.ExitCode))" }
+          if (!(Select-String -Path "$env:ASTRA_LAB_DATA\logs\astra-lab.log" -Pattern 'SMOKE OK' -Quiet)) { throw "installed app exited without reporting SMOKE OK" }
+          $un = Get-ChildItem $dir -Filter 'Uninstall*.exe' | Select-Object -First 1
+          $u = Start-Process -FilePath $un.FullName -ArgumentList '/S' -Wait -PassThru
+          for ($k = 0; $k -lt 30 -and (Test-Path $exe); $k++) { Start-Sleep -Seconds 1 }   # the NSIS uninstaller re-launches itself from temp
+          if (Test-Path $exe) { throw "uninstall left $exe behind (exit code $($u.ExitCode))" }
+          Write-Host "Uninstalled cleanly"

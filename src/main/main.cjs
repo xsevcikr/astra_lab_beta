@@ -152,7 +152,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => { if (!SMOKE) mainWindow.show(); });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://astra/')) { e.preventDefault(); } });
-  mainWindow.webContents.on('render-process-gone', (_e, d) => { log('error', 'renderer gone', d); if (!SMOKE) { dialog.showErrorBox('ASTRA LAB', 'The display process stopped unexpectedly. Your projects are saved automatically; the window will reload now.'); mainWindow.reload(); } });
+  mainWindow.webContents.on('render-process-gone', (_e, d) => { log('error', 'renderer gone', d); if (SMOKE) return smokeFail(`renderer ${d.reason} (exit ${d.exitCode})`); dialog.showErrorBox('ASTRA LAB', 'The display process stopped unexpectedly. Your projects are saved automatically; the window will reload now.'); mainWindow.reload(); });
   mainWindow.webContents.on('console-message', (_e, level, message, line, src) => { if (level >= 2 || SMOKE) log(level >= 2 ? 'error' : 'info', `[console] ${message}`, `${src}:${line}`); });
   mainWindow.loadURL('app://astra/ui/index.html');
   mainWindow.on('closed', () => { mainWindow = null; });
@@ -208,15 +208,18 @@ if (!app.requestSingleInstanceLock() && !SMOKE) { app.quit(); } else {
   app.on('child-process-gone', (_e, d) => {
     if (d.type === 'GPU' && d.reason !== 'clean-exit') {
       log('error', 'GPU process gone', d);
+      // smoke test: never relaunch (the parent would exit 0 and CI would report a pass that tested nothing)
+      if (SMOKE) return smokeFail(`GPU process ${d.reason} (exit ${d.exitCode})`);
       try { if (!fs.existsSync(SOFT_FLAG())) { fs.writeFileSync(SOFT_FLAG(), 'The graphics driver crashed; ASTRA LAB uses software rendering. Delete this file to try the GPU again.\n'); log('warn', 'switching to software rendering and restarting'); app.relaunch(); app.exit(0); } } catch { /* ignore */ }
     }
   });
 }
 
 // ------------------------------------------------------------------------------------------------------------------ smoke test (CI)
+function smokeFail(m) { log('error', `SMOKE FAILED: ${m}`); process.stdout.write(`SMOKE FAILED: ${m}\n`); app.exit(1); }
 async function runSmokeTest() {
   const wc = () => mainWindow?.webContents;
-  const fail = (m) => { log('error', `SMOKE FAILED: ${m}`); process.stdout.write(`SMOKE FAILED: ${m}\n`); app.exit(1); };
+  const fail = smokeFail;
   setTimeout(() => fail('timeout'), 120000);
   try {
     for (let i = 0; i < 120; i++) { await new Promise((r) => setTimeout(r, 500)); try { if (await wc().executeJavaScript('!!window.astraApp && !!document.querySelector("#app:not([hidden])")')) break; } catch { /* page not ready */ } if (i === 119) return fail('UI did not start'); }
@@ -228,7 +231,8 @@ async function runSmokeTest() {
     const saved = await wc().executeJavaScript('window.astraApp.save({quiet:true}).then(r => r.ok)');
     if (!saved) return fail('project could not be saved to disk');
     const gl = await wc().executeJavaScript('(() => { const c = document.createElement("canvas"); return !!(c.getContext("webgl") || c.getContext("experimental-webgl")); })()');
-    process.stdout.write(`SMOKE OK runs=${JSON.stringify(run)} webgl=${gl} data=${DATA_DIR}\n`);
+    const ok = `SMOKE OK runs=${JSON.stringify(run)} webgl=${gl} data=${DATA_DIR}`;
+    log('info', ok); process.stdout.write(`${ok}\n`);
     app.exit(0);
   } catch (e) { fail(String(e?.message ?? e)); }
 }
