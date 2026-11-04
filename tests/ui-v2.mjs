@@ -56,6 +56,8 @@ try {
   check('Mission Control offers the Director camera', await page.locator('.camera-bar .chip[data-mode=cinema]').count() === 1);
   await page.click('.camera-bar .chip[data-mode=cinema]');
   await page.click('#live-start'); await page.waitForFunction(() => window.astraApp.live?.sim?.t > 3, null, { timeout: 60000 });
+  // on a slow machine (CI, software WebGL) the "Your computer is slow" callout can cover the view buttons: answer it as a user would
+  if (await page.locator('#live-slow').isVisible()) await page.click('#live-slow-20');
   await page.click('#view-cinema'); await page.waitForTimeout(600);
   check('cinema view hides the side panel and charts', await page.evaluate(() => getComputedStyle(document.querySelector('.split.cinema > .side')).display === 'none'));
   const big = await page.evaluate(() => document.querySelector('.stage canvas').getBoundingClientRect().width);
