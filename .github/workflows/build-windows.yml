@@ -35,7 +35,7 @@ jobs:
           ASTRA_LAB_DATA: ${{ runner.temp }}\astra-smoke-src
           ASTRA_LAB_SOFTWARE_RENDER: "1"
         run: |
-          $exe = (node -p "require('electron')").Trim()
+          $exe = (node -p "require('electron')" | Where-Object { $_ -match 'electron\.exe' } | Select-Object -Last 1).Trim()   # the path line (Node may print other lines)
           $p = Start-Process -FilePath $exe -ArgumentList '.', '--smoke-test' -Wait -PassThru -NoNewWindow
           Get-Content "$env:ASTRA_LAB_DATA\logs\astra-lab.log" -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { throw "smoke test failed (exit code $($p.ExitCode))" }
