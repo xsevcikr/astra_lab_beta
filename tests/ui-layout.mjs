@@ -81,7 +81,8 @@ function inspect() {
 
 const server = await startServer(8175);
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await (await browser.newContext({ viewport: { width: 1366, height: 768 } })).newPage();
+// reduced motion: the 2.6 screen-in animation (translateY) would otherwise be measured mid-flight when a screen is slow to build
+const page = await (await browser.newContext({ viewport: { width: 1366, height: 768 }, reducedMotion: 'reduce' })).newPage();
 const errors = []; let where = 'start';
 page.on('pageerror', (e) => errors.push(`${e.message} (at ${where})`));
 page.on('console', (m) => { if (m.type() === 'error' && !/WebGL|GPU|swiftshader/i.test(m.text())) errors.push(`${m.text().slice(0, 140)} (at ${where})`); });

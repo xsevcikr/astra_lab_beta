@@ -46,7 +46,11 @@ try {
   await page.click('#live-start'); await page.click('[data-speed="20"]');
   await page.waitForFunction(() => window.astraApp.live?.sim.t > 70, null, { timeout: 90000 });
   await page.waitForTimeout(600);
+  // 2.6: the cockpit strip is on by default and replaces the simple HUD; switching the cockpit off brings the HUD back
+  check('cockpit is shown by default', await page.locator('.cockpit').isVisible());
+  if (await page.locator('.cockpit').isVisible()) await page.click('#view-cockpit');
   check('simple HUD shows speed, height, fuel, push, phase', (await page.locator('#fd-hud .fd-hud-cell').count()) === 5 && await page.locator('#fd-hud').isVisible());
+  if (!(await page.locator('.cockpit').isVisible())) await page.click('#view-cockpit');   // leave the default as it was
   check('speed buttons 1x 5x 20x exist and 20x is active', (await page.locator('.fd-speeds button').count()) === 3 && (await page.locator('.fd-speeds button.active').innerText()) === '20×');
   check('key moments feed lists Liftoff! and Max-Q from the real flight', await page.evaluate(() => { const t = document.querySelector('#fd-feed').innerText; return /Liftoff!/.test(t) && /Max-Q/.test(t); }));
   check('live speed select still works', await page.evaluate(() => !!document.querySelector('#live-speed')));
