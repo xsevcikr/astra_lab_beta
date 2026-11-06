@@ -126,6 +126,22 @@ export function summariseRows(rows) {
   return { total: graded.length, pass: graded.filter((r) => r.status === 'pass').length, fail: graded.filter((r) => r.status === 'fail').length, missing: rows.filter((r) => r.status === 'missing').length, context: rows.filter((r) => r.kind === 'context').length };
 }
 
+/**
+ * 2.7: the honest scoreboard. A row is a BUILD check when it only tests that the vehicle was entered correctly (masses, thrust, height), a PREDICTION when
+ * the simulator had to compute it. Context rows are graded loosely (indicative band, 15 %) so they cannot hide a big miss. `fitted` says the flight
+ * followed a pitch programme fitted to this very flight, so its orbit and timing rows are calibration, not independent prediction.
+ */
+export const BUILD_METRICS = new Set(['liftoffMass', 'liftoffMassNoPayload', 'liftoffThrust', 'height']);
+export const INDICATIVE_TOL = 0.15;
+export function splitSummary(rows, V, reached) {
+  const g = rows.filter((r) => r.kind === 'graded' && r.status !== 'missing');
+  const build = g.filter((r) => BUILD_METRICS.has(r.metric)), pred = g.filter((r) => !BUILD_METRICS.has(r.metric));
+  const ctx = rows.filter((r) => r.kind === 'context' && r.status !== 'missing' && r.err != null);
+  const n = (a) => ({ pass: a.filter((r) => r.status === 'pass').length, total: a.length });
+  return { build: n(build), prediction: n(pred), context: { within: ctx.filter((r) => Math.abs(r.err) <= INDICATIVE_TOL).length, total: ctx.length, misses: ctx.filter((r) => Math.abs(r.err) > INDICATIVE_TOL) },
+    fitted: !!(V?.flight?.pitch), reached: !!reached };
+}
+
 /** Synchronous flight (node tests, fitting). */
 export function runValidationFlight(id, opts = {}) {
   const { V, vehicle, mission } = buildFlight(id, opts);

@@ -125,3 +125,11 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 - Aurora is a static shader effect, visible on night-side Earth near the poles only.
 - Daylight look is generated from the dark rules (`scripts/gen-daylight.py`); 3D views stay dark. Run the script again after changing dark panel colours in `ui/styles.css`.
 - Engine rumble and countdown sounds are synthesised, not recorded.
+
+## Added in 2.7 (fixes from the engineering audit, see CHANGELOG-2.7.md)
+* Frames: the root frame is the J2000 ecliptic and every body has its own spin-axis frame, but there is still no precession or nutation, no polar motion and no UTC/TAI/TT/TDB distinction. The Earth rotation angle is the mean J2000 value plus uniform rotation. Mars and the Moon use the IAU mean pole with an arbitrary prime-meridian offset, so their longitudes are not the official ones.
+* The Moon's elements are fixed J2000 mean elements with secular node regression and perigee advance. There are no short-period lunar perturbations (evection, variation), so its position is good to about a degree or two, not arc-seconds. No DE440 ephemerides yet.
+* Drag is computed to 1000 km on Earth. In the long coast steps a fixed Cd of 2.2 on the end-on cross-section is used and the attitude is ignored; there is no solar-cycle or geomagnetic variation of the upper atmosphere (US76 is a mean). Orbit lifetime is therefore indicative.
+* Precise gravity (J2, J3, J4) and the optional Sun and Moon pull (`settings.thirdBody`) are off by default. Third-body positions are held constant within a step. No higher harmonics, tides, solar radiation pressure or relativity.
+* Pitch damping uses the same normal-force slope and centre of pressure as the static model. The body centre of pressure is still mid-length (a move to the nose broke validated launchers); a per-vehicle aero database is needed.
+* The stored Apollo plan launches with the Sun 40 deg below the horizon (night): of the launch days within 60 days that reach the Moon with a 3-day trip, the only ones the course-correction solver can aim at the lunar equator are at night (or give a 63 h trip, which fails the 10% Mission Report check). The trip home is planned for 70 h (Apollo 11: 59.9 h) because the real Moon geometry at the planned date makes the 59.9 h trip cost about 1,150 m/s.

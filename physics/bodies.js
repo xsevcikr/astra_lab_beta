@@ -1,7 +1,11 @@
 // Celestial body registry + analytic (Keplerian) ephemeris.
 // New bodies can be added at runtime with registerBody(); every field below is a plain data value.
-// Reference frame convention (documented simplification): each body's inertial frame has +Z along its spin axis;
-// the Earth-Sun orbital plane is the reference plane (obliquity ignored). Body orbits use two-body Kepler elements.
+// Reference frames (2.7): the ROOT frame is the heliocentric ecliptic of J2000 (z = ecliptic north, x = vernal equinox). Orbit elements are
+// referred to it. Every body also has its own inertial frame with +Z along its spin axis, given by the pole direction (right ascension and
+// declination, IAU values) and turned from the root frame by frameMatrix(id). Earth's frame is the equatorial J2000 frame, so the Earth is
+// tilted 23.44 deg against its orbit, and the Moon's orbit (5.145 deg to the ecliptic) is 18 to 29 deg from the Earth's equator, as in reality.
+// bodyStateRelParent() returns the state in the PARENT's frame; bodyStateAbs() returns the heliocentric root-frame state.
+// Body orbits use two-body Kepler elements (the Moon also has its secular node regression and apsidal advance).
 import { DEG, AU, SOLAR_CONSTANT } from './constants.js';
 import { Atmosphere } from './atmosphere.js';
 
@@ -14,20 +18,22 @@ const BODY_DEFS = [
   },
   {
     id: 'earth', name: 'Earth', type: 'planet', parent: 'sun', dataSource: 'real',
-    mu: 3.986004418e14, radius: 6378137, j2: 1.08263e-3, rotationPeriod: 86164.0905,
+    mu: 3.986004418e14, radius: 6378137, j2: 1.08263e-3, j3: -2.5327e-6, j4: -1.6196e-6, rotationPeriod: 86164.0905, pole: { ra: 0, dec: 90 }, rotation0: 280.46061837,   // Earth rotation angle at J2000.0 (IAU 2006 ERA)
     orbit: { a: 1.495978707e11, e: 0.0167086, i: 0, raan: 0, argp: 102.94719, M0: 357.51716 },
-    atmosphere: { model: 'us76', height: 150000 },
+    atmosphere: { model: 'us76', height: 150000, dragHeight: 1000000 },
     surface: { temperature: 288, tDay: 305, tNight: 275, albedo: 0.30, irFlux: 237, friction: 0.7, terrainAmplitude: 150, terrainWavelength: 30000 },
   },
   {
     id: 'moon', name: 'Moon', type: 'moon', parent: 'earth', dataSource: 'real',
     mu: 4.9028e12, radius: 1737400, rotationPeriod: 2360591.5, atmosphere: { model: 'none' },
-    orbit: { a: 3.84399e8, e: 0.0549, i: 5.145, raan: 125.08, argp: 318.15, M0: 115.37 },
+    pole: { ra: 269.9949, dec: 66.5392 },   // IAU mean lunar pole (without the libration terms): within 0.03 deg of the ecliptic pole; the real axis is tilted 1.54 deg to it and precesses
+    orbit: { a: 3.84399e8, e: 0.0549, i: 5.145, raan: 125.08, argp: 318.15, M0: 134.963, raanRate: -0.0529538, argpRate: 0.164357 },   // J2000 mean elements (Meeus), deg and deg/day; the node regresses once per 18.6 years
+
     surface: { temperature: 250, tDay: 390, tNight: 100, albedo: 0.12, irFlux: 1.3, friction: 0.55, rollingResistance: 0.16, roughness: 0.5, terrainAmplitude: 400, terrainWavelength: 20000, regolithCohesion: 500 },
   },
   {
     id: 'mars', name: 'Mars', type: 'planet', parent: 'sun', dataSource: 'real',
-    mu: 4.2828372e13, radius: 3389500, j2: 1.96045e-3, rotationPeriod: 88642.66,
+    mu: 4.2828372e13, radius: 3389500, j2: 1.96045e-3, rotationPeriod: 88642.66, pole: { ra: 317.68143, dec: 52.8865 },
     orbit: { a: 2.279392e11, e: 0.0934, i: 1.85, raan: 49.558, argp: 286.483, M0: 19.4125 },
     atmosphere: { model: 'glenn-mars', height: 120000 },
     surface: { temperature: 210, tDay: 280, tNight: 150, albedo: 0.25, irFlux: 55, friction: 0.6, rollingResistance: 0.13, roughness: 0.4, terrainAmplitude: 500, terrainWavelength: 15000, regolithCohesion: 800 },
@@ -36,6 +42,30 @@ const BODY_DEFS = [
 
 const registry = new Map();
 
+/** Rows of the rotation root -> body frame for a pole {ra, dec} [deg, J2000 equatorial]. z = pole, x = ascending node of the body's equator on the ecliptic. null = same axes as the root frame. */
+function poleFrame(pole) {
+  if (!pole) return null;
+  const ra = pole.ra * DEG, dec = pole.dec * DEG, eps = OBLIQUITY_J2000 * DEG;
+  const ex = Math.cos(dec) * Math.cos(ra), ey = Math.cos(dec) * Math.sin(ra), ez = Math.sin(dec);                 // pole in equatorial axes
+  const zb = [ex, ey * Math.cos(eps) + ez * Math.sin(eps), -ey * Math.sin(eps) + ez * Math.cos(eps)];                // ... in ecliptic (root) axes
+  let xb = [zb[1], -zb[0], 0]; const xl = Math.hypot(xb[0], xb[1]); xb = xl > 1e-12 ? [xb[0] / xl, xb[1] / xl, 0] : [1, 0, 0];   // z_b x z_root
+  const yb = [zb[1] * xb[2] - zb[2] * xb[1], zb[2] * xb[0] - zb[0] * xb[2], zb[0] * xb[1] - zb[1] * xb[0]];
+  return [xb, yb, zb];
+}
+export const OBLIQUITY_J2000 = 23.4392911;   // deg, mean obliquity of the ecliptic at J2000 (IAU 2006)
+/** A vector given in the root (ecliptic) axes, written in the axes of body `id`. */
+export function fromRoot(id, v) {
+  const f = registry.get(id)?.frame;
+  return f ? [f[0][0] * v[0] + f[0][1] * v[1] + f[0][2] * v[2], f[1][0] * v[0] + f[1][1] * v[1] + f[1][2] * v[2], f[2][0] * v[0] + f[2][1] * v[1] + f[2][2] * v[2]] : v;
+}
+/** A vector in the axes of body `id`, written in the root (ecliptic) axes. */
+export function toRoot(id, v) {
+  const f = registry.get(id)?.frame;
+  return f ? [f[0][0] * v[0] + f[1][0] * v[1] + f[2][0] * v[2], f[0][1] * v[0] + f[1][1] * v[1] + f[2][1] * v[2], f[0][2] * v[0] + f[1][2] * v[1] + f[2][2] * v[2]] : v;
+}
+/** Re-express a vector from the axes of body `from` in the axes of body `to`. */
+export const convertFrame = (from, to, v) => (from === to ? v : fromRoot(to, toRoot(from, v)));
+
 export function registerBody(def) {
   const b = { ...def };
   b.atmosphereModel = new Atmosphere(def.atmosphere);
@@ -43,8 +73,10 @@ export function registerBody(def) {
   b.gravity = def.mu / (def.radius * def.radius);
   if (def.orbit) {
     const o = def.orbit;
-    b.elements = { a: o.a, e: o.e, i: o.i * DEG, raan: o.raan * DEG, argp: o.argp * DEG, M0: o.M0 * DEG };
+    const perDay = DEG / 86400;
+    b.elements = { a: o.a, e: o.e, i: o.i * DEG, raan: o.raan * DEG, argp: o.argp * DEG, M0: o.M0 * DEG, raanRate: (o.raanRate ?? 0) * perDay, argpRate: (o.argpRate ?? 0) * perDay };
   }
+  b.frame = poleFrame(def.pole);
   b.children = [];
   registry.set(def.id, b);
   for (const other of registry.values()) other.children = [...registry.values()].filter((c) => c.parent === other.id).map((c) => c.id);
@@ -90,15 +122,17 @@ export function bodyStateRelParent(id, t) {
   const b = getBody(id);
   if (!b.parent || !b.elements) return { r: [0, 0, 0], v: [0, 0, 0] };
   const p = getBody(b.parent);
-  const { a, e, i, raan, argp, M0 } = b.elements;
+  const { a, e, i, M0 } = b.elements;
+  const raan = b.elements.raan + b.elements.raanRate * t, argp = b.elements.argp + b.elements.argpRate * t;
   const n = Math.sqrt(p.mu / (a * a * a));
-  const E = solveKepler(M0 + n * t, e);
+  const E = solveKepler(M0 + (n - b.elements.raanRate - b.elements.argpRate) * t, e);   // the mean longitude keeps advancing at n while the node and perigee turn
   const cE = Math.cos(E), sE = Math.sin(E);
   const rr = a * (1 - e * cE);
   const xp = a * (cE - e), yp = a * Math.sqrt(1 - e * e) * sE;
   const f = (Math.sqrt(p.mu * a) / rr);
   const vxp = -f * sE, vyp = f * Math.sqrt(1 - e * e) * cE;
-  return { r: perifocalToInertial(xp, yp, i, raan, argp), v: perifocalToInertial(vxp, vyp, i, raan, argp) };
+  // elements are referred to the ecliptic; the result is written in the parent's own axes (Earth: equatorial)
+  return { r: fromRoot(p.id, perifocalToInertial(xp, yp, i, raan, argp)), v: fromRoot(p.id, perifocalToInertial(vxp, vyp, i, raan, argp)) };
 }
 
 /** Heliocentric (root frame) state of a body. */
@@ -106,9 +140,9 @@ export function bodyStateAbs(id, t) {
   let r = [0, 0, 0], v = [0, 0, 0];
   let cur = getBody(id);
   while (cur.parent) {
-    const s = bodyStateRelParent(cur.id, t);
-    r = [r[0] + s.r[0], r[1] + s.r[1], r[2] + s.r[2]];
-    v = [v[0] + s.v[0], v[1] + s.v[1], v[2] + s.v[2]];
+    const s = bodyStateRelParent(cur.id, t), sr = toRoot(cur.parent, s.r), sv = toRoot(cur.parent, s.v);
+    r = [r[0] + sr[0], r[1] + sr[1], r[2] + sr[2]];
+    v = [v[0] + sv[0], v[1] + sv[1], v[2] + sv[2]];
     cur = getBody(cur.parent);
   }
   return { r, v };
@@ -131,11 +165,11 @@ export function sunDirection(id, t) {
   if (id === 'sun') return [1, 0, 0];
   const s = bodyStateAbs(id, t).r; // heliocentric position of the body (root frame)
   const l = Math.hypot(s[0], s[1], s[2]) || 1;
-  return [-s[0] / l, -s[1] / l, -s[2] / l];
+  return fromRoot(id, [-s[0] / l, -s[1] / l, -s[2] / l]);   // written in the body's own axes, like its surface points
 }
 
 // ---------- body-fixed <-> inertial ----------
-export function rotationAngle(id, t, theta0 = 0) { return theta0 + getBody(id).omega * t; }
+export function rotationAngle(id, t, theta0 = 0) { const b = getBody(id); return theta0 + (b.rotation0 ?? 0) * DEG + b.omega * t; }   // Earth: the true rotation angle at J2000 (t = seconds after J2000)
 
 /** Inertial position of a surface point (lat, lon in radians, radius r). */
 export function surfacePointInertial(id, lat, lon, t, radius) {

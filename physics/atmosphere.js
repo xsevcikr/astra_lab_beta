@@ -108,7 +108,8 @@ export class Atmosphere {
     this.cfg = cfg || { model: 'none' };
     this.model = this.cfg.model || 'none';
     if (this.cfg.profile === 'sounding' && this.cfg.sounding) this._snd = soundingModel(this.cfg.sounding);
-    this.height = this.cfg.height ?? (this.model === 'none' ? 0 : 200000); // altitude above which density is treated as 0
+    this.height = this.cfg.height ?? (this.model === 'none' ? 0 : 200000); // altitude above which density is treated as 0 (also the 'is this a stable orbit' limit)
+    this.dragHeight = this.cfg.dragHeight ?? this.height;                    // 2.7: altitude to which drag is still computed (Earth: 1000 km, so low orbits decay)
     if (this.model === 'exponential') {
       const c = this.cfg;
       this.rho0 = c.rho0; this.H = c.scaleHeight; this.T0 = c.T0 ?? 250; this.gamma = c.gamma ?? 1.4; this.Rg = c.R ?? 287;
