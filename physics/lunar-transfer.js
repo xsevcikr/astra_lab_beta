@@ -2,7 +2,7 @@
 // correction costs, and which launch time and burn point send a parked ship to the Moon.
 // Model: two-body Kepler arcs (Earth, then Moon after the sphere-of-influence crossing) with the SAME ephemeris and the SAME
 // sphere-of-influence radius that the flight simulator uses. It is the planner's estimate; the simulator integrates the real flight.
-import { getBody, bodyStateRelParent } from './bodies.js';
+import { getBody, bodyStateRelParent, convertFrame } from './bodies.js';
 import { propagateKepler, elementsFromState } from './orbital.js';
 import { add, sub, scale, dot, cross, len, norm } from './vec.js';
 
@@ -36,7 +36,7 @@ export function soiEntry(r, v, t0, { maxSpan = 8 * DAY, step = 1200 } = {}) {
       let lo = prev, hi = dt;
       for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (rel(mid).d < soi) hi = mid; else lo = mid; }
       const e = rel(hi);
-      return { t: t0 + hi, dt: hi, rE: e.s.r, vE: e.s.v, rM: sub(e.s.r, e.m.r), vM: sub(e.s.v, e.m.v) };
+      return { t: t0 + hi, dt: hi, rE: e.s.r, vE: e.s.v, rM: convertFrame('earth', 'moon', sub(e.s.r, e.m.r)), vM: convertFrame('earth', 'moon', sub(e.s.v, e.m.v)) };   // 2.7: rM, vM are written in the Moon's own axes (pole = lunar spin axis)
     }
     prev = dt;
   }
@@ -239,7 +239,7 @@ export function planTransEarth(r0, v0, tAbs0, { span = 7000, step = 30, dvMin = 
     if (len(propagateKepler(muM, rb, vb, hi).r) < soi) return null;
     for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (len(propagateKepler(muM, rb, vb, mid).r) < soi) lo = mid; else hi = mid; }
     const s = propagateKepler(muM, rb, vb, hi), m = moonState(tb + hi);
-    return { r: add(s.r, m.r), v: add(s.v, m.v), tx: hi };
+    return { r: add(convertFrame('moon', 'earth', s.r), m.r), v: add(convertFrame('moon', 'earth', s.v), m.v), tx: hi };   // Moon axes -> Earth axes
   };
   for (let dtb = 120; dtb <= span; dtb += step) {
     const s = propagateKepler(muM, r0, v0, dtb), dir = norm(s.v);

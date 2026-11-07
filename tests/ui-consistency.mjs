@@ -28,8 +28,10 @@ try {
   check('switching back picks the rocket goal by itself', await ev(() => { const m = window.astraApp.project.mission; return m.guidance?.mode === 'ascent' && m.initial?.type === 'pad'; }));
   check('no stale-flight label for the rocket', (await page.locator('#sim-stale').count()) === 0);
   // T+0 in replay
-  await ev(() => window.astraApp.navigate('replay')); await page.waitForTimeout(4000);
-  const hud = await ev(() => document.querySelector('#fd-hud')?.innerText ?? '');
+  // the first replay frame can take several seconds on a slow machine (planet textures are built on the main thread): wait for it
+  await ev(() => window.astraApp.navigate('replay'));
+  await page.waitForFunction(() => /km\/h/.test(document.querySelector('#fd-hud')?.textContent ?? ''), null, { timeout: 30000 }).catch(() => {});
+  const hud = await ev(() => document.querySelector('#fd-hud')?.textContent ?? '');
   check('Beginner HUD at T+0: speed over ground 0 km/h and height 0 m', /SPEED\s*0\s*km\/h/i.test(hud) && /HEIGHT\s*0\s*m/i.test(hud), JSON.stringify(hud));
   await ev(() => window.astraApp.setSetting('mode', 'advanced')); await page.waitForTimeout(2500);
   const adv = await ev(() => document.querySelector('.hud')?.innerText ?? '');

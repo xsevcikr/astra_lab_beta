@@ -6,10 +6,11 @@
 import { G0, SIGMA } from './constants.js';
 import { add, sub, scale, dot, cross, len, norm, clamp, qMul, qConj, qNormalize, qRotate, qFromXAxis, qFromTwoVectors, qFromAxisAngle, angleBetween, madd } from './vec.js';
 import { rk4Step, makeRk4Work } from './integrator.js';
-import { getBody, bodyStateRelParent, bodyStateAbs, rotationAngle, surfacePointInertial, corotationVelocity, latLonFromInertial, localFrame, sunDirection, solarFlux, listBodies } from './bodies.js';
+import { getBody, bodyStateRelParent, bodyStateAbs, fromRoot, toRoot, convertFrame, rotationAngle, surfacePointInertial, corotationVelocity, latLonFromInertial, localFrame, sunDirection, solarFlux, listBodies } from './bodies.js';
 import { Atmosphere } from './atmosphere.js';
 import { elementsFromState, circularOrbitState, circularSpeed } from './orbital.js';
 import { ispAtPressure } from './propulsion.js';
+import { zonalAccel, thirdBodies, thirdBodyAccel } from './gravity.js';
 import { thrustFactor } from './thrust-curves.js';
 import { SloshFlex } from './flex-slosh.js';
 import { axialCoeff, capsuleCoeff, normalCoeff, NOSE_FACTORS, heatingConstant, stagnationHeatFlux } from './aero.js';
@@ -34,7 +35,8 @@ export const DEFAULT_SETTINGS = {
   recordMax: 20000,               // telemetry samples kept (decimated in place beyond this)
   attitudeBandwidth: 1.3,         // rad/s, attitude controller natural frequency
   attitudeDamping: 0.85,
-  j2: false,
+  j2: false,                      // precise gravity: oblateness J2, J3, J4 (2.7: J3, J4 added)
+  thirdBody: false,               // 2.7: pull of the Sun and the Moon (Earth) or the Sun and the Earth (Moon); needs no other switch
   slosh: false,                   // 2.3: propellant slosh (spring-mass model per partly filled tank)
   slosh2: false,                  // 2.5: second slosh mode per tank (needs slosh)
   flex: false,                    // 2.3: first bending mode of the structure and the bent-sensor error
@@ -270,6 +272,9 @@ export class Simulation {
     const topId = lay.stackIds[lay.stackIds.length - 1];
     const top = topId ? fv.byId.get(topId) : null;
     if (top) noseKey = top.kind === 'nose_cone' ? (top.shape ?? 'ogive') : top.kind === 'fairing' ? 'cone' : top.kind === 'payload' ? 'flat' : 'flat';
+    // Body normal force acts at mid-length. 2.7 audit note: slender-body (Barrowman) theory would put the LINEAR part on the nose, but that is for small
+    // finless model rockets; real tall launchers (steps, flares, skirts, body lift) have their centre of pressure near mid-length (Saturn V: about 0.48 L from
+    // the base), and moving it to the nose made Falcon 9 and Soyuz crash in validation. Kept at 0.5 L until an aero database per vehicle exists.
     const cnBody = 2.0, xcpBody = 0.5 * L;
     const cnTot = cnBody + cnFins;
     this.geom = {
@@ -318,10 +323,8 @@ export class Simulation {
     const rx = y[0], ry = y[1], rz = y[2];
     const r2 = rx * rx + ry * ry + rz * rz, rm = Math.sqrt(r2), r3 = r2 * rm;
     let gx = (-mu * rx) / r3, gy = (-mu * ry) / r3, gz = (-mu * rz) / r3;
-    if (this.settings.j2 && P.j2) {
-      const k = (1.5 * P.j2 * mu * P.radius * P.radius) / (r2 * r2), z2 = (rz * rz) / r2;   // acceleration magnitude 1.5 J2 mu R^2 / r^4 (2.1 fix: it was divided by one more r, which made J2 ~7 orders of magnitude too weak)
-      gx += -k * (rx / rm) * (1 - 5 * z2) * 1; gy += -k * (ry / rm) * (1 - 5 * z2); gz += -k * (rz / rm) * (3 - 5 * z2);
-    }
+    if (this.settings.j2 && (P.j2 || P.j3 || P.j4)) { const ga = this._ga; ga[0] = gx; ga[1] = gy; ga[2] = gz; zonalAccel(P, rx, ry, rz, ga); gx = ga[0]; gy = ga[1]; gz = ga[2]; }   // J2 (2.1 fix), J3, J4 (2.7)
+    if (this._third) { const ga = this._ga; ga[0] = gx; ga[1] = gy; ga[2] = gz; thirdBodyAccel(this._third, rx, ry, rz, ga); gx = ga[0]; gy = ga[1]; gz = ga[2]; }
     const q = [y[6], y[7], y[8], y[9]];
     const w = [y[10], y[11], y[12]];
     const m = c ? c.m0 - c.mdot * tau : this.fv.mass;
@@ -330,7 +333,7 @@ export class Simulation {
     const alt = rm - P.radius;
     const atmM = P.atmosphereModel;
     let rho = 0, aSound = 300, pAmb = 0, Tamb = 0;
-    if (atmM.hasAtmosphere && alt < atmM.height) { const a = atmM.query(alt); rho = a.rho; aSound = a.a; pAmb = a.p; Tamb = a.T; }
+    if (atmM.hasAtmosphere && alt < atmM.dragHeight) { const a = atmM.query(alt); rho = a.rho; aSound = a.a; pAmb = a.p; Tamb = a.T; }
     const om = P.omega;
     let vax = y[3] + om * ry, vay = y[4] - om * rx, vaz = y[5];
     if (rho > 0) {
@@ -338,7 +341,7 @@ export class Simulation {
       if (this._wind) { const wv = this._windAt(rx, ry, rz, rm, alt); vax -= wv[0]; vay -= wv[1]; vaz -= wv[2]; }   // air-relative velocity: the vehicle is pushed by the wind
     }
     const speed = Math.sqrt(vax * vax + vay * vay + vaz * vaz);
-    let Fx = 0, Fy = 0, Fz = 0, torqueAero = [0, 0, 0], qd = 0, mach = 0, alpha = 0, drag = 0, lift = 0;
+    let Fx = 0, Fy = 0, Fz = 0, torqueAero = [0, 0, 0], qd = 0, mach = 0, alpha = 0, drag = 0, lift = 0, dampK = 0;
     if (rho > 0 && speed > 0.1) {
       const g = this.geom;
       const u = [vax / speed, vay / speed, vaz / speed];
@@ -359,6 +362,9 @@ export class Simulation {
       Fx += fa * ax[0] - fnMag * nHat[0]; Fy += fa * ax[1] - fnMag * nHat[1]; Fz += fa * ax[2] - fnMag * nHat[2];
       // torque about CG from normal force acting at the centre of pressure
       const arm = c ? g.xcp - c.cg : 0;
+      // 2.7 aerodynamic pitch damping: a pitch rate w changes the local angle of attack at the centre of pressure by w*arm/V, so the normal force changes
+      // by q S CNalpha w arm / V and its moment about the CG opposes the rotation: M = -(1/2) rho V S CNalpha arm^2 w
+      dampK = 0.5 * rho * speed * g.Sref * g.cnAlpha * arm * arm;
       // F_N = -fnMag * nHat, r = arm * ax  =>  tau = arm * (ax x F_N)
       const tN = cross(ax, [-fnMag * nHat[0], -fnMag * nHat[1], -fnMag * nHat[2]]);
       torqueAero = [arm * tN[0], arm * tN[1], arm * tN[2]];
@@ -441,7 +447,7 @@ export class Simulation {
     // rotational dynamics in the body frame
     const tauA_b = qRotate(qConj(q), torqueAero);
     const Ilat = c ? c.Ilat : 1, Iax = c ? c.Iax : 1;
-    const tx = tauA_b[0] + tauCtl[0], ty2 = tauA_b[1] + tauCtl[1] + (c?.slTy ?? 0), tz2 = tauA_b[2] + tauCtl[2] + (c?.slTz ?? 0);
+    const tx = tauA_b[0] + tauCtl[0], ty2 = tauA_b[1] + tauCtl[1] + (c?.slTy ?? 0) - dampK * w[1], tz2 = tauA_b[2] + tauCtl[2] + (c?.slTz ?? 0) - dampK * w[2];
     out.dwx = tx / Iax;
     out.dwy = (ty2 + (Ilat - Iax) * w[2] * w[0]) / Ilat;
     out.dwz = (tz2 + (Iax - Ilat) * w[0] * w[1]) / Ilat;
@@ -463,6 +469,8 @@ export class Simulation {
     this.sfInfo = r;
   }
 
+  _ga = [0, 0, 0];
+  _third = null;
   _derivative = (tau, y, dy) => {
     const o = this._dtmp;
     this._evalForces(tau, y, o, 0);
@@ -486,7 +494,7 @@ export class Simulation {
     const y = this.y;
     const r = [y[0], y[1], y[2]];
     const alt = len(r) - P.radius;
-    const pAmb = P.atmosphereModel.hasAtmosphere && alt < P.atmosphereModel.height ? P.atmosphereModel.query(alt).p : 0;
+    const pAmb = P.atmosphereModel.hasAtmosphere && alt < P.atmosphereModel.dragHeight ? P.atmosphereModel.query(alt).p : 0;
     // engines: spool, feed, thrust clusters
     let TgVac = 0, TgLoss = 0, TfVac = 0, TfLoss = 0, mdotTot = 0, xgW = 0, gimbalW = 0;
     let ispSum = 0, ispW = 0, thrustAnyOn = false, avgThr = 0, nOn = 0;
@@ -774,6 +782,8 @@ export class Simulation {
     if (this.onGround) { this._advanceOnGround(dt, dirCmd); return; }
 
     // ---------------- flight integration ----------------
+    const tb = this.settings.thirdBody ? thirdBodies(this.primary.id, this.env.epoch + this.t + dt / 2) : null;   // positions at mid-step, held through the step
+    this._third = tb && tb.length ? tb : null;
     const ctx = this._buildContext(dt, dirCmd);
     this._ctx = ctx;
     if (this.settings.slosh || this.settings.flex) this._applySloshFlex(ctx, dt);
@@ -787,14 +797,26 @@ export class Simulation {
       // large coast step: integrate translation with RK4, attitude with a rate-limited kinematic slew
       const fy = new Float64Array(13); fy.set(y);
       const w0 = this.work;
+      const dragOn = this.primary.atmosphereModel.hasAtmosphere, dragCdA = 2.2 * (this.geom?.Sref ?? 1), mAvg = Math.max(this.fv.mass, 1);
       const f = (tt, yy, dy) => {
         const rr = Math.hypot(yy[0], yy[1], yy[2]);
         const k = -this.primary.mu / (rr * rr * rr);
         dy[0] = yy[3]; dy[1] = yy[4]; dy[2] = yy[5];
         dy[3] = k * yy[0]; dy[4] = k * yy[1]; dy[5] = k * yy[2];
-        if (this.settings.j2 && this.primary.j2) {
-          const P2 = this.primary, r2 = rr * rr, kk = (1.5 * P2.j2 * P2.mu * P2.radius * P2.radius) / (r2 * r2), z2 = (yy[2] * yy[2]) / r2;
-          dy[3] += -kk * (yy[0] / rr) * (1 - 5 * z2); dy[4] += -kk * (yy[1] / rr) * (1 - 5 * z2); dy[5] += -kk * (yy[2] / rr) * (3 - 5 * z2);
+        if ((this.settings.j2 && (this.primary.j2 || this.primary.j3 || this.primary.j4)) || this._third) {
+          const ga = [dy[3], dy[4], dy[5]];
+          if (this.settings.j2) zonalAccel(this.primary, yy[0], yy[1], yy[2], ga);
+          if (this._third) thirdBodyAccel(this._third, yy[0], yy[1], yy[2], ga);
+          dy[3] = ga[0]; dy[4] = ga[1]; dy[5] = ga[2];
+        }
+        // 2.7 drag in the long coast steps: free-molecular flow, Cd 2.2 on the cross-section facing the flow (end-on area Sref). Without it every orbit lasted forever.
+        const Pm = this.primary, am = Pm.atmosphereModel;
+        if (dragOn && rr - Pm.radius < am.dragHeight) {
+          const rho = am.density(rr - Pm.radius) * this._densityScale;
+          if (rho > 0) {
+            const vx = yy[3] + Pm.omega * yy[1], vy = yy[4] - Pm.omega * yy[0], vz = yy[5], vm = Math.hypot(vx, vy, vz), kd = -0.5 * rho * vm * dragCdA / mAvg;
+            dy[3] += kd * vx; dy[4] += kd * vy; dy[5] += kd * vz;
+          }
         }
         for (let i = 6; i < 13; i++) dy[i] = 0;
       };
@@ -944,9 +966,9 @@ export class Simulation {
     const r = [y[0], y[1], y[2]];
     const tabs = this.env.epoch + this.t;
     const abs = bodyStateAbs(P.id, tabs).r;
-    const posAbs = add(abs, r);
+    const posAbs = add(abs, toRoot(P.id, r));                                        // heliocentric position (root axes); r is written in the primary's own axes
     const d = len(posAbs) || 1;
-    const sunDir = scale(posAbs, -1 / d);
+    const sunDir = fromRoot(P.id, scale(posAbs, -1 / d));                            // 2.7: the Sun direction in the primary's axes, like r
     this._sunDir = sunDir;
     const flux = 1361 * (1.495978707e11 / d) ** 2;
     const sunlit = isSunlit(r, sunDir, P.radius);
@@ -966,7 +988,7 @@ export class Simulation {
     } else {
       const earthAbs = bodyStateAbs('earth', tabs).r;
       const rel = sub(earthAbs, posAbs);
-      commRange = len(rel); commTargetDir = norm(rel);
+      commRange = len(rel); commTargetDir = norm(fromRoot(P.id, rel));
       // occultation by the primary (line of sight from vehicle to Earth blocked by the body)
       if (P.id !== 'sun') {
         const dr = dot(r, commTargetDir);
@@ -1069,14 +1091,30 @@ export class Simulation {
   // ---------------------------------------------------------------------------------------------------------
   // sphere-of-influence transitions
   // ---------------------------------------------------------------------------------------------------------
+  /** 2.7: the attitude quaternion (body -> primary axes) after the primary's axes change from body `fromId` to body `toId`. */
+  _reframeAttitude(fromId, toId) {
+    const y = this.y, q = [y[6], y[7], y[8], y[9]];
+    const ax = convertFrame(fromId, toId, qRotate(q, [1, 0, 0])), ay = convertFrame(fromId, toId, qRotate(q, [0, 1, 0])), az = cross(ax, ay);
+    const m = [[ax[0], ay[0], az[0]], [ax[1], ay[1], az[1]], [ax[2], ay[2], az[2]]], tr = m[0][0] + m[1][1] + m[2][2];
+    let w, x, yy, z;
+    if (tr > 0) { const S = Math.sqrt(tr + 1) * 2; w = S / 4; x = (m[2][1] - m[1][2]) / S; yy = (m[0][2] - m[2][0]) / S; z = (m[1][0] - m[0][1]) / S; }
+    else if (m[0][0] > m[1][1] && m[0][0] > m[2][2]) { const S = Math.sqrt(1 + m[0][0] - m[1][1] - m[2][2]) * 2; w = (m[2][1] - m[1][2]) / S; x = S / 4; yy = (m[0][1] + m[1][0]) / S; z = (m[0][2] + m[2][0]) / S; }
+    else if (m[1][1] > m[2][2]) { const S = Math.sqrt(1 + m[1][1] - m[0][0] - m[2][2]) * 2; w = (m[0][2] - m[2][0]) / S; x = (m[0][1] + m[1][0]) / S; yy = S / 4; z = (m[1][2] + m[2][1]) / S; }
+    else { const S = Math.sqrt(1 + m[2][2] - m[0][0] - m[1][1]) * 2; w = (m[1][0] - m[0][1]) / S; x = (m[0][2] + m[2][0]) / S; yy = (m[1][2] + m[2][1]) / S; z = S / 4; }
+    const qn = qNormalize([w, x, yy, z]); y[6] = qn[0]; y[7] = qn[1]; y[8] = qn[2]; y[9] = qn[3];
+    const g = this.guidance; if (Array.isArray(g?.captured) && g.captured.length === 3) g.captured = convertFrame(fromId, toId, g.captured);   // a held direction stays pointing the same way in space
+    if (Array.isArray(g?.params?.vector) && g.params.vector.length === 3) g.params = { ...g.params, vector: convertFrame(fromId, toId, g.params.vector) };
+  }
+
   _soiTransitions() {
     const y = this.y, P = this.primary;
     const rm = Math.hypot(y[0], y[1], y[2]);
     const tabs = this.env.epoch + this.t;
     if (P.parent && rm > P.soi) {
-      const s = bodyStateRelParent(P.id, tabs);
-      for (let i = 0; i < 3; i++) { y[i] += s.r[i]; y[3 + i] += s.v[i]; }
-      const parent = getBody(P.parent);
+      const s = bodyStateRelParent(P.id, tabs), parent = getBody(P.parent);
+      const rP = convertFrame(P.id, parent.id, [y[0], y[1], y[2]]), vP = convertFrame(P.id, parent.id, [y[3], y[4], y[5]]);   // 2.7: the child's axes and the parent's axes differ
+      for (let i = 0; i < 3; i++) { y[i] = rP[i] + s.r[i]; y[3 + i] = vP[i] + s.v[i]; }
+      this._reframeAttitude(P.id, parent.id);
       this.log('SOI', `Left ${P.name} sphere of influence, now in ${parent.name} frame`, { from: P.id, to: parent.id });
       this.primary = parent; this._forceRecord = true; this.limitsDirty = true;
       this.visited ??= new Set(); this.visited.add(parent.id);
@@ -1088,7 +1126,9 @@ export class Simulation {
       const s = bodyStateRelParent(cid, tabs);
       const rel = [y[0] - s.r[0], y[1] - s.r[1], y[2] - s.r[2]];
       if (Math.hypot(...rel) < C.soi) {
-        for (let i = 0; i < 3; i++) { y[i] -= s.r[i]; y[3 + i] -= s.v[i]; }
+        const rC = convertFrame(P.id, C.id, rel), vC = convertFrame(P.id, C.id, [y[3] - s.v[0], y[4] - s.v[1], y[5] - s.v[2]]);
+        for (let i = 0; i < 3; i++) { y[i] = rC[i]; y[3 + i] = vC[i]; }
+        this._reframeAttitude(P.id, C.id);
         this.log('SOI', `Entered ${C.name} sphere of influence`, { from: P.id, to: C.id });
         this.primary = C; this._forceRecord = true; this.limitsDirty = true;
         this.visited ??= new Set(); this.visited.add(C.id);
