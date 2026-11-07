@@ -39,7 +39,7 @@ jobs:
           node-version: 22
       - name: Install Playwright and Chromium (test-only, not saved to package.json)
         run: |
-          npm install --no-save --ignore-scripts playwright@1.48.2
+          npm install --no-save --ignore-scripts playwright@1.63.0
           npx playwright install --with-deps chromium
       - name: UI suites
         run: npm run test:ui

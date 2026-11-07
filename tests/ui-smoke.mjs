@@ -11,7 +11,8 @@ try { ({ chromium } = require('playwright')); } catch { try { ({ chromium } = re
 const results = []; const check = (name, ok, extra = '') => { results.push([name, ok]); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`); };
 const server = await startServer(8127);
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await (await browser.newContext({ viewport: { width: 1360, height: 800 } })).newPage();
+// reduced motion: the screen-in animation moves the designer handles while the test aims the mouse at them
+const page = await (await browser.newContext({ viewport: { width: 1360, height: 800 }, reducedMotion: 'reduce' })).newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 try {
   await page.goto('http://127.0.0.1:8127/ui/index.html');
@@ -21,7 +22,7 @@ try {
   check('Beginner sidebar is short', (await page.locator('.nav-item[data-screen]').count()) <= 9);
   await page.evaluate(() => window.astraApp.setSetting('mode', 'advanced')); await page.waitForTimeout(300);
   const screens = ['home', 'designer', 'planner', 'simulation', 'control', 'telemetry', 'replay', 'analysis', 'ai', 'experiments', 'projects', 'settings'];
-  for (const id of screens) { await page.click(`.nav-item[data-screen=${id}]`); await page.waitForTimeout(400); const t = await page.evaluate(() => document.querySelector('#screen').innerText.length); check(`screen "${id}" opens (empty project)`, t > 20 && !(await page.locator('#screen .empty-title:has-text("could not be opened")').count())); }
+  for (const id of screens) { await page.click(`.nav-item[data-screen=${id}]`); await page.waitForFunction(() => document.querySelector('#screen').innerText.length > 20, null, { timeout: 15000 }).catch(() => {}); const t = await page.evaluate(() => document.querySelector('#screen').innerText.length); check(`screen "${id}" opens (empty project)`, t > 20 && !(await page.locator('#screen .empty-title:has-text("could not be opened")').count())); }
   // mandatory conversation through the chat box
   await page.click('.nav-item[data-screen=ai]');
   const say = async (txt) => { await page.fill('#chat-text', txt); await page.click('#chat-send'); await page.waitForFunction(() => !document.querySelector('#typing') && !document.querySelector('#chat-send').disabled, null, { timeout: 240000 }); await page.waitForTimeout(300); };
