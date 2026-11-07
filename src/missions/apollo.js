@@ -116,10 +116,10 @@ export function planApolloMission(vehicle, opts = {}) {
   const y = sim.y, B = getBody('earth');
   const park = { r: [y[0], y[1], y[2]], v: [y[3], y[4], y[5]], t: sim.t };
   const burnSeconds = sim.burnTime('stage3', opts.tliDv ?? 3160);
-  const plan = planTransLunar(park, { raFactor: opts.raFactor ?? 1.55, fast: true, coastMin: opts.coastMin ?? 7300, coastMax: opts.coastMax ?? 10500, days: opts.searchDays ?? 29, aimAltitude: aimAlt });
+  const plan = planTransLunar(park, { raFactor: opts.raFactor ?? 1.55, fast: true, coastMin: opts.coastMin ?? 7300, coastMax: opts.coastMax ?? 10500, days: opts.searchDays ?? 60, aimAltitude: aimAlt });
   // among the launch days that reach the Moon, take the one whose course correction (9 hours after the burn) gives an equatorial lunar orbit most cheaply:
   // the orbit plane then stays nearly fixed while the Moon turns beneath it during the surface stay
-  // Apollo 11 lifted off in the morning: among the launch days whose correction costs within 3 m/s of the cheapest, take the one with the Sun highest at the pad
+  // Apollo 11 lifted off in the morning: among the launch days whose correction costs within 12 m/s of the cheapest, take the one with the Sun highest at the pad
   const site0 = LAUNCH_SITES.find((x) => x.body === 'earth') ?? { lat: 28.573, lon: -80.649 };
   const sunAtPad = (epoch) => { const sp = surfacePointInertial('earth', site0.lat * Math.PI / 180, site0.lon * Math.PI / 180, epoch, B.radius); return Math.asin(dot(norm(sp), sunDirection('earth', epoch))) * 180 / Math.PI; };
   const options = [];
@@ -135,9 +135,13 @@ export function planApolloMission(vehicle, opts = {}) {
     }
   }
   const cheapest = options.reduce((m, o) => Math.min(m, o.dv), Infinity);
-  const best = options.filter((o) => o.dv <= cheapest + 3).sort((x, y) => y.sun - x.sun)[0] ?? null;
+  // 2.7: prefer a trip of about 3 days (Apollo 11: TLI to LOI in 73 hours); the trip length varies with where the Moon is on its eccentric orbit
+  const near = options.filter((o) => o.dv <= cheapest + (opts.dvSlack ?? 12)), tofWant = (opts.tofHours ?? 73) * 3600;
+  if (process.env.DBGAP) console.log(options.map((o) => [(o.c.epoch / 86400).toFixed(1), (o.c.tof / 3600).toFixed(1), o.incl, o.dv.toFixed(1), o.sun.toFixed(0)].join(' ')).join('\n'));
+  const onTime = near.filter((o) => Math.abs(o.c.tof - tofWant) <= 8 * 3600);
+  const best = (onTime.length ? onTime : near).sort((x, y) => y.sun - x.sun)[0] ?? null;
   const c = best?.c ?? plan;
-  if (c.missKm * 1000 > getBody('moon').soi * 0.5) throw new Error(`No launch time in the next ${opts.searchDays ?? 29} days sends this rocket to the Moon (best miss ${c.missKm.toFixed(0)} km).`);
+  if (c.missKm * 1000 > getBody('moon').soi * 0.5) throw new Error(`No launch time in the next ${opts.searchDays ?? 60} days sends this rocket to the Moon (best miss ${c.missKm.toFixed(0)} km).`);
   const tBurnStart = Math.max(park.t + 300, park.t + c.tau - burnSeconds / 2);
   return {
     parkingAltitude: parkAlt, aimAltitude: aimAlt, ascent: { azimuth: opts.azimuth ?? 72 },
@@ -221,7 +225,7 @@ export function apolloMissionFromPlan(vehicle, plan, opts = {}) {
     // trans-Earth injection (Apollo 11: LM jettison T+130:10, TEI T+135:24, entry interface T+195:03, i.e. 59.7 h home; Mission Report
     // MSC-00171). The planned trip home is the published one; the burn size then follows from the physics (Apollo 11: 1,001 m/s) and is
     // compared with the published value by src/core/mission-validation.js.
-    ev('Plan the trans-Earth injection', after('sepLma', opts.teiPlanDelay ?? 4.4 * HOUR), { type: 'PLAN_TEI', group: 'sm', perigee: 45000, tofTarget: opts.teiTripHours != null ? opts.teiTripHours * HOUR : 59.9 * HOUR }, ID('planTei')),
+    ev('Plan the trans-Earth injection', after('sepLma', opts.teiPlanDelay ?? 4.4 * HOUR), { type: 'PLAN_TEI', group: 'sm', perigee: 45000, tofTarget: (opts.teiTripHours ?? 70) * HOUR }   /* 2.7: 70 h, not Apollo 11's 59.9 h: with the Moon in its real orbit plane and a launch about a month after the old plan, the 59.9 h trip needs 1,150 m/s (+15 %); 70 h costs about 1,050 m/s */, ID('planTei')),
     ev('Turn to the burn direction', { type: 'planned', key: 'tei', lead: 400 }, { type: 'SET_GUIDANCE', mode: 'prograde' }, ID('teiTurn')),
     ev('Trans-Earth injection (service module engine)', { type: 'planned', key: 'tei', lead: 0 }, { type: 'BURN', group: 'sm', plan: 'tei', throttle: 1, maxDuration: 600 }, ID('tei')),
     ev('Hold attitude', after('tei', 30), { type: 'SET_GUIDANCE', mode: 'hold' }, ID('holdTei')),

@@ -3,7 +3,7 @@
 import { h, clear } from '../lib/dom.js';
 import { panel } from '../lib/widgets.js';
 import { assumptionsPanel } from '../lib/assumptions.js';
-import { VALIDATION_VEHICLES, TOLERANCE_NOTE, runValidationFlightAsync, findMaxPayload, summariseRows, compareRows, sunSynchronousInclination } from '../../src/core/validation.js';
+import { VALIDATION_VEHICLES, TOLERANCE_NOTE, runValidationFlightAsync, findMaxPayload, summariseRows, splitSummary, compareRows, sunSynchronousInclination } from '../../src/core/validation.js';
 import { deltaVBudget } from '../../physics/mission-design.js';
 import { MISSION_CASES, runMissionCase } from '../../src/core/mission-validation.js';
 
@@ -59,10 +59,15 @@ export default {
     }
 
     function verdictLine(V, res) {
-      const sm = summariseRows(res.rows);
+      const sm = summariseRows(res.rows), sp = splitSummary(res.rows, V, res.reached);
       const bad = res.rows.filter((r) => r.status === 'fail');
+      const ctxMiss = sp.context.misses;
       return h('div', { class: 'val-verdict' },
-        h('div', { class: 'val-big' }, h('span', { class: sm.fail ? 'warn' : 'ok' }, `${sm.pass} of ${sm.total}`), ' numbers match the real rocket'),
+        h('div', { class: 'val-big' }, h('span', { class: sp.prediction.pass < sp.prediction.total ? 'warn' : 'ok' }, `${sp.prediction.pass} of ${sp.prediction.total}`), ' computed numbers match the real rocket',
+          h('span', { class: 'muted' }, ` (plus ${sp.build.pass} of ${sp.build.total} build checks: masses and thrust that were typed in)`)),
+        !res.reached ? h('div', { class: 'warn val-fail', 'data-testid': 'val-run-failed' }, `The flight itself FAILED: ${res.sim.result.reason}. A good table does not make up for that.`) : null,
+        sp.fitted ? h('div', { class: 'muted val-fit' }, 'The pitch programme of this flight was fitted to the real flight, so the orbit and timing rows are calibration, not an independent prediction.') : null,
+        ctxMiss.length ? h('div', { class: 'warn val-ctx' }, `Context rows outside 15 %: ${ctxMiss.map((r) => `${r.label} ${pct(r.err)}`).join('; ')}.`) : null,
         h('div', { class: 'muted' }, V.flight.suborbital ? `The simulated rocket climbed to ${nf(res.metrics.maxAlt / 1000)} km and reached ${nf(res.metrics.maxSpeed)} m/s through the air (it does not go into orbit).`
           : res.reached ? `The simulated rocket reached the ${nf(V.flight.altitude / 1000)} km orbit (${nf(res.metrics.orbitPeri / 1000)} × ${nf(res.metrics.orbitApo / 1000)} km).`
           : res.metrics.reachedOrbit === 1 ? `The simulated rocket got its low point up to ${nf(res.metrics.peakPeriapsis / 1000)} km (target ${nf(V.flight.altitude / 1000)} km) but did not finish a clean orbit: ${nf(res.metrics.orbitPeri / 1000)} × ${nf(res.metrics.orbitApo / 1000)} km.`

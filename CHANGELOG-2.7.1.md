@@ -1,4 +1,4 @@
-# ASTRA LAB 2.6.2
+# ASTRA LAB 2.7.1 (Electron 44 and CI fixes, on top of 2.7.0)
 
 ## Fixes
 - **The app no longer crashes at start on Windows 11 24H2 and newer.** Electron 22 (Chromium 108) crashed its GPU and display processes

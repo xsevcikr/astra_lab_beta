@@ -1,6 +1,8 @@
 // Atmosphere models. Earth: US Standard Atmosphere 1976 to 86 km (PHYSICS-based table model),
 // exponential extension above (APPROXIMATION). Mars: NASA Glenn curve fit (APPROXIMATION).
 import { MODEL } from './provenance.js';
+import { Atmosphere as MainAtmosphere } from '../../../physics/atmosphere.js';   // 2.7: one source of truth for the Earth above 86 km (this file used a 7 km scale height there: 13 orders of magnitude too thin at 400 km)
+const HIGH_EARTH = new MainAtmosphere({ model: 'us76', height: 1e9 });
 
 const R_AIR = 287.053, GAMMA_AIR = 1.4, G0 = 9.80665, RE = 6356766;
 // geopotential base heights (m), base temps (K), lapse rates (K/m)
@@ -26,14 +28,12 @@ function earth(alt) {
     const p = L[i] === 0 ? P[i] * Math.exp(-G0 * (h - H[i]) / (R_AIR * T[i])) : P[i] * Math.pow(t / T[i], -G0 / (L[i] * R_AIR));
     return { temperature: t, pressure: p, density: p / (R_AIR * t), speedOfSound: Math.sqrt(GAMMA_AIR * R_AIR * t), gamma: GAMMA_AIR, gasConstant: R_AIR, model: MODEL.PHYSICS };
   }
-  // above 86 km: exponential tail with 7 km scale height, 186.9 K (thermosphere heating ignored)
-  const zTop = RE * H[H.length - 1] / (RE - H[H.length - 1]);
-  const top = earth(zTop - 1e-6);
-  const f = Math.exp(-(z - zTop) / 7000);
-  return { ...top, pressure: top.pressure * f, density: top.density * f, model: MODEL.APPROXIMATION };
+  // above 86 km: the tabulated US76 values of the main simulator (physics/atmosphere.js), log-interpolated
+  const q = HIGH_EARTH.query(z);
+  return { temperature: q.T, pressure: q.p, density: q.rho, speedOfSound: q.a, gamma: q.gamma, gasConstant: q.R, model: MODEL.PHYSICS };
 }
 
-const R_MARS = 191.8, GAMMA_MARS = 1.29;
+const R_MARS = 188.92, GAMMA_MARS = 1.29;
 function mars(alt) {
   const h = Math.max(alt, -8000);
   const tc = h < 7000 ? -31 - 0.000998 * h : -23.4 - 0.00222 * h;
