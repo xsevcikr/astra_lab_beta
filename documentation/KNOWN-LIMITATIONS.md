@@ -7,7 +7,7 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 * **The Windows installer (.exe) could not be built or run in the environment where this code was written** (no Windows machine and no access to the Electron download there). The packaging configuration (`package.json`, `src/main/*.cjs`, `installer-builder/BUILD-WINDOWS.bat`, the GitHub workflow) follows electron-builder's documented setup, and the main-process security logic is unit-tested against a mock of Electron, but **the first real build on Windows is the first real test of the packaging**. If something fails, the log file `Documents\ASTRA-LAB\logs\astra-lab.log` and the messages of `npm run dist` say why.
 * The user interface was tested in headless Chromium (software WebGL) with 25 automated checks (`tests/ui-smoke.mjs`) and by inspecting screenshots, not on a Windows GPU. 3D performance on very old integrated graphics is unmeasured; use *Settings → 3D quality: Low* and 20 fps if it is slow.
 * The online AI connection (Anthropic and OpenAI-compatible) was tested against local mock servers that speak the real wire formats, **not against the live services**.
-* Electron 22 is chosen so that the app also runs on Windows 7/8. That version no longer receives security updates. The app loads only its own local files, has no Node access in the window, blocks navigation and external requests, and sends network traffic only for the optional AI feature. If you only need Windows 10/11, raise the Electron version in `package.json` (the main process uses the `registerFileProtocol` API, deprecated but available up to Electron 35; migrate to `protocol.handle` when upgrading beyond that).
+* Windows 7 and 8 are no longer supported (since 2.7.1). Electron 22, the last line for them, crashed at start on Windows 11 24H2 / Server 2025 (GPU and renderer access violation in its Chromium 108 sandbox) and no longer received security updates. The app now uses Electron 44 and serves its files with `protocol.handle`.
 * The installer is not code-signed (Windows SmartScreen will warn).
 
 ## Physics scope
@@ -103,7 +103,7 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 * Correlated Monte Carlo uses Gaussian links between inputs; contradicting links are refused.
 * CCSDS OEM/OPM and SPICE-text exchange use a simplified EME2000 frame; it is not a binary SPK kernel.
 * Auto-update: tested with the real `electron-updater` against a local mock server on Linux (check, download, sha512 check, tampered file refused) and through the app's own IPC wrapper. NOT tested: the Windows installer, the restart-and-install step, a real internet server. The installer is not code-signed. See UPDATES.md.
-* Windows: the unpacked Windows app builds with electron-builder on Linux and Electron 22 starts the app (smoke test under a virtual display). The NSIS installer step needs Windows (or wine) and was not run; the two GitHub workflows were syntax-checked but never run on GitHub (this project is not in a repository).
+* Windows: GitHub Actions builds the NSIS installer and portable exe on Windows, installs the installer silently, runs the installed app's smoke test (software rendering, the runners have no GPU) and uninstalls it. Real GPUs, the visible window and the auto-update download are not covered by CI.
 * The Earth on the first page is visual only and falls back to a painted Earth without WebGL.
 
 ## Added in 2.4

@@ -20,7 +20,7 @@ const netRequests = [];
 const electron = {
   app: { getAppPath: () => ROOT, getPath: (n) => (n === 'userData' ? USER : os.tmpdir()), getVersion: () => '1.0.0', isPackaged: true, commandLine: { appendSwitch() {} }, disableHardwareAcceleration() {}, requestSingleInstanceLock: () => true, whenReady: () => Promise.resolve(), on() {}, quit() {}, exit() {}, relaunch() {} },
   BrowserWindow: class { constructor() { this.webContents = { setWindowOpenHandler() {}, on() {} }; } once() {} on() {} loadURL(u) { loadedUrl = u; } static fromWebContents() { return null; } },
-  protocol: { registerSchemesAsPrivileged() {}, registerFileProtocol: (scheme, fn) => { fileProtocol = fn; } },
+  protocol: { registerSchemesAsPrivileged() {}, handle: (scheme, fn) => { fileProtocol = fn; } },
   ipcMain: { handle: (ch, fn) => handlers.set(ch, fn), on: (ch, fn) => listeners.set(ch, fn) },
   dialog: {}, shell: {}, Menu: { setApplicationMenu() {}, buildFromTemplate: (t) => t },
   session: { defaultSession: { setPermissionRequestHandler() {} } },
@@ -60,15 +60,19 @@ test('disk bridge: path traversal, absolute paths and drive letters are rejected
   await assert.rejects(call('storage:remove', '.'), /data folder/);
   assert.ok(!fs.existsSync(path.join(DATA, '..', 'evil.txt')));
 });
-test('app:// protocol serves only the allow-listed folders and file types', () => {
-  const ask = (url) => { let out; fileProtocol({ url }, (r) => (out = r)); return out; };
-  assert.ok(ask('app://astra/ui/index.html').path.endsWith(path.join('ui', 'index.html')));
-  assert.ok(ask('app://astra/physics/simulation.js').path.endsWith('simulation.js'));
-  assert.equal(ask('app://astra/package.json').statusCode, 403);
-  assert.equal(ask('app://astra/tests/ai.test.js').statusCode, 403);
-  assert.equal(ask('app://astra/src/main/main.cjs').statusCode, 403);   // .cjs is not a served type
-  assert.equal(ask('app://astra/ui/%2e%2e/package.json').statusCode, 403);
-  assert.equal(ask('app://astra/../package.json').statusCode, 403);
+test('app:// protocol serves only the allow-listed folders and file types', async () => {
+  const ask = (url) => fileProtocol({ url });
+  const index = await ask('app://astra/ui/index.html');
+  assert.equal(index.status, 200); assert.equal(index.headers.get('content-type'), 'text/html');
+  assert.equal(await index.text(), fs.readFileSync(path.join(ROOT, 'ui', 'index.html'), 'utf8'));
+  const sim = await ask('app://astra/physics/simulation.js');
+  assert.equal(sim.status, 200); assert.equal(sim.headers.get('content-type'), 'text/javascript');
+  assert.equal((await ask('app://astra/package.json')).status, 403);
+  assert.equal((await ask('app://astra/tests/ai.test.js')).status, 403);
+  assert.equal((await ask('app://astra/src/main/main.cjs')).status, 403);   // .cjs is not a served type
+  assert.equal((await ask('app://astra/ui/%2e%2e/package.json')).status, 403);
+  assert.equal((await ask('app://astra/../package.json')).status, 403);
+  assert.equal((await ask('app://astra/ui/no-such-file.js')).status, 404);
 });
 test('AI network bridge: https and localhost only', async () => {
   for (const bad of ['http://example.com/v1', 'file:///etc/passwd', 'ftp://x/y', 'javascript:alert(1)', 'https://', 'not a url']) await assert.rejects(call('ai:fetch', { url: bad, method: 'POST', body: '{}' }), undefined, bad);

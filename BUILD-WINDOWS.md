@@ -1,6 +1,6 @@
 # Building the Windows installer (.exe)
 
-ASTRA LAB is packaged with **Electron 22** (the last Electron line that runs on Windows 7 and 8; it also runs on Windows 10/11) and **electron-builder**. The installer is an NSIS setup that creates a desktop shortcut and a Start-menu entry. No browser is needed to run the installed app.
+ASTRA LAB is packaged with **Electron 44** (Windows 10 and 11, 64-bit) and **electron-builder**. The installer is an NSIS setup that creates a desktop shortcut and a Start-menu entry. No browser is needed to run the installed app.
 
 ## Option A – on your Windows PC (about 5 minutes)
 

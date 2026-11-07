@@ -50,3 +50,32 @@ jobs:
           name: ui-failure-screenshots
           path: tests/**/*.png
           if-no-files-found: ignore
+  electron-smoke:
+    # Starts the real Electron app (hidden window): Windows Server 2022 and 2025 (2025 shares its base with Windows 11 24H2,
+    # where Electron 22 crashed at start). Software rendering because the runners have no GPU.
+    name: Electron app starts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Smoke test (AI plan, flight, save to disk)
+        shell: pwsh
+        timeout-minutes: 5
+        env:
+          ASTRA_LAB_DATA: ${{ runner.temp }}\astra-smoke
+          ASTRA_LAB_SOFTWARE_RENDER: "1"
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          $exe = (node -p "require('electron')" | Where-Object { $_ -match 'electron\.exe' } | Select-Object -Last 1).Trim()   # the path line (Node may print other lines)
+          $p = Start-Process -FilePath $exe -ArgumentList '.', '--smoke-test' -Wait -PassThru -NoNewWindow
+          Get-Content "$env:ASTRA_LAB_DATA\logs\astra-lab.log" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "smoke test failed (exit code $($p.ExitCode))" }
+          if (!(Select-String -Path "$env:ASTRA_LAB_DATA\logs\astra-lab.log" -Pattern 'SMOKE OK' -Quiet)) { throw "app exited without reporting SMOKE OK" }

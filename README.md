@@ -135,7 +135,7 @@ Where your work is stored: in this mode projects are kept in the app's own brows
 
 Troubleshooting: if nothing opens, install Google Chrome and try again. If the folder path contains special characters (for example accents), extract the ZIP to `C:\ASTRA-LAB` instead.
 
-## Install (Windows 7/8/10/11, 64-bit)
+## Install (Windows 10/11, 64-bit)
 
 1. Get the installer `ASTRA LAB Setup 1.3.0.exe` (optional; build it once with `installer-builder\BUILD-WINDOWS.bat`, see `BUILD-WINDOWS.md`, or download it from the *Actions* tab of the repository if you use the supplied GitHub workflow).
 2. Run it. It installs to your user profile, adds a **desktop shortcut** and a Start-menu entry, and starts ASTRA LAB.
@@ -148,7 +148,7 @@ A low-end laptop is enough: the physics runs on the CPU, the 3D view uses WebGL 
 Requirements: Node.js 18 or newer.
 
 ```bash
-npm install          # installs Electron 22 and electron-builder (development only)
+npm install          # installs Electron 44 and electron-builder (development only)
 npm start            # starts the desktop application
 npm test             # 46 automated tests (physics validation, AI, storage, reports, Electron main process)
 npm run demo         # headless demo: the complete conversation, writes a PDF report
@@ -205,7 +205,7 @@ ASTRA-LAB
 ## Dependencies
 
 Runtime: **none** (no npm packages are bundled; the physics, AI, 3D renderer, charts and PDF writer are written in plain JavaScript).
-Development / packaging: `electron@22.3.27` (last Electron line for Windows 7/8), `electron-builder@24.13.3`.
+Development / packaging: `electron@44.9.2`, `electron-builder@26.17.0`, `electron-updater@6.8.10`. (Up to 2.6.1 the app used Electron 22 for Windows 7/8; that version crashes at start on Windows 11 24H2 and newer, so 2.6.2 needs Windows 10 or 11.)
 Optional for the browser test: `playwright`.
 
 ## Troubleshooting
