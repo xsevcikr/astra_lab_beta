@@ -4,7 +4,8 @@ import { CHANNEL_META } from '../../physics/telemetry.js';
 import { state as unitState, detailMode } from './units.js';
 import { formatNumber } from '../../src/core/numfmt.js';
 
-const COLORS = ['#2bd9a0', '#ff7a45', '#84e060', '#c07cff', '#ffd23f', '#3fd0d0', '#ff6b9d', '#a8bdb3'];
+// 2.8: validated categorical order (colour-blind separation checked on the dark chart surface)
+const COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
 export const seriesColor = (i) => COLORS[i % COLORS.length];
 
 /** Display conversion for an SI channel unit given its data range: returns {f, unit}. */
@@ -82,11 +83,11 @@ export class Chart {
     if (c.width !== Math.floor(w * dpr) || c.height !== Math.floor(h * dpr)) { c.width = Math.floor(w * dpr); c.height = Math.floor(h * dpr); }
     const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
     const css = getComputedStyle(document.documentElement);
-    const bg = css.getPropertyValue('--panel-2').trim() || '#0a100e', grid = css.getPropertyValue('--grid').trim() || '#1b2823', fg = css.getPropertyValue('--muted').trim() || '#9bb0a7';
+    const bg = css.getPropertyValue('--panel-2').trim() || '#0b111c', grid = css.getPropertyValue('--grid').trim() || '#1a2436', fg = css.getPropertyValue('--muted').trim() || '#94a3bb';
     g.fillStyle = bg; g.fillRect(0, 0, w, h);
     const P = this._plot(); const [xa, xb] = this._xr();
     const X = (x) => P.x0 + ((x - xa) / (xb - xa)) * (P.x1 - P.x0);
-    const FS = this.clean ? 12.5 : 11; g.font = `${FS}px "Segoe UI", system-ui, sans-serif`; g.textBaseline = 'middle';
+    const FS = this.clean ? 12.5 : 11; g.font = `${FS}px "Inter Variable", "Segoe UI", system-ui, sans-serif`; g.textBaseline = 'middle';
     // y ranges per axis
     const ranges = [null, null, null];
     for (const s of this.series) {
@@ -107,7 +108,7 @@ export class Chart {
     if (ranges[1]) { g.textAlign = 'left'; for (const v of niceTicks(ranges[1][0], ranges[1][1], 4)) { const y = Y(1, v); g.fillText(fmtTick(v), P.x1 + 6, y); } }
     g.textAlign = 'center';
     for (const v of niceTicks(xa, xb, this.clean ? this.xTicks : 6)) { const x = Math.round(X(v)) + 0.5; if (!this.clean) { g.beginPath(); g.moveTo(x, P.y0); g.lineTo(x, P.y1); g.stroke(); } g.fillText(fmtTick(v), x, P.y1 + (this.clean ? 14 : 12)); }
-    if (this.clean) { g.strokeStyle = '#33463f'; g.beginPath(); g.moveTo(P.x0 + 0.5, P.y0); g.lineTo(P.x0 + 0.5, P.y1 + 0.5); g.lineTo(P.x1, P.y1 + 0.5); g.stroke(); } else { g.strokeStyle = '#33463f'; g.strokeRect(P.x0 + 0.5, P.y0 + 0.5, P.x1 - P.x0, P.y1 - P.y0); }
+    if (this.clean) { g.strokeStyle = '#2e3b52'; g.beginPath(); g.moveTo(P.x0 + 0.5, P.y0); g.lineTo(P.x0 + 0.5, P.y1 + 0.5); g.lineTo(P.x1, P.y1 + 0.5); g.stroke(); } else { g.strokeStyle = '#2e3b52'; g.strokeRect(P.x0 + 0.5, P.y0 + 0.5, P.x1 - P.x0, P.y1 - P.y0); }
     // markers
     g.save(); g.beginPath(); g.rect(P.x0, P.y0, P.x1 - P.x0, P.y1 - P.y0); g.clip();
     for (const m of (this.clean && !this.showMarkers ? [] : this.markers)) { if (m.t < xa || m.t > xb) continue; const x = Math.round(X(m.t)) + 0.5; g.strokeStyle = m.color ?? 'rgba(255,255,255,0.28)'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, P.y0); g.lineTo(x, P.y1); g.stroke(); g.setLineDash([]); }
@@ -132,18 +133,18 @@ export class Chart {
     }
     // cursor
     if (this.cursor != null && this.cursor >= xa && this.cursor <= xb) { const x = Math.round(X(this.cursor)) + 0.5; g.strokeStyle = '#ffffff'; g.globalAlpha = 0.85; g.beginPath(); g.moveTo(x, P.y0); g.lineTo(x, P.y1); g.stroke(); g.globalAlpha = 1; }
-    if (this.hover != null) { const x = Math.round(X(this.hover)) + 0.5; g.strokeStyle = '#9bb0a7'; g.beginPath(); g.moveTo(x, P.y0); g.lineTo(x, P.y1); g.stroke(); }
+    if (this.hover != null) { const x = Math.round(X(this.hover)) + 0.5; g.strokeStyle = '#94a3bb'; g.beginPath(); g.moveTo(x, P.y0); g.lineTo(x, P.y1); g.stroke(); }
     g.restore();
     // legend (values at cursor / hover)
     const at = this.hover ?? this.cursor;
     g.textAlign = 'left'; let lx = P.x0 + 6;
-    g.fillStyle = '#cfe0d8'; g.font = `bold ${FS}px "Segoe UI", system-ui, sans-serif`; if (this.title) { g.fillText(this.title, lx, 11); lx += g.measureText(this.title).width + 14; }
-    g.font = `${FS}px "Segoe UI", system-ui, sans-serif`;
+    g.fillStyle = '#d5deea'; g.font = `bold ${FS}px "Inter Variable", "Segoe UI", system-ui, sans-serif`; if (this.title) { g.fillText(this.title, lx, 11); lx += g.measureText(this.title).width + 14; }
+    g.font = `${FS}px "Inter Variable", "Segoe UI", system-ui, sans-serif`;
     for (const s of this.series) {
       if (this.clean && this.series.length === 1 && at == null) break;
       const val = at != null ? s.spec.f(this._sample(s, at)) : null;
       const label = this.clean ? `${s.label ?? s.id}${val != null && Number.isFinite(val) ? ` ${fmtTick(val)} ${s.spec.unit}` : ''}` : `${s.label ?? s.id} [${s.spec.unit}]${val != null && Number.isFinite(val) ? ' = ' + fmtTick(val) : ''}`;
-      g.fillStyle = s.color; g.fillRect(lx, 6, 9, 9); g.fillStyle = '#cfe0d8'; g.fillText(label, lx + 13, 11); lx += g.measureText(label).width + 30;
+      g.fillStyle = s.color; g.fillRect(lx, 6, 9, 9); g.fillStyle = '#d5deea'; g.fillText(label, lx + 13, 11); lx += g.measureText(label).width + 30;
       if (lx > w - 80) break;
     }
     g.fillStyle = fg; g.textAlign = 'right'; g.fillText(this.xLabel, w - 6, h - 8);
@@ -155,14 +156,14 @@ export function drawBars(canvas, items, { unit = '', title = '' } = {}) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2), w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
   canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
   const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.fillStyle = '#0a100e'; g.fillRect(0, 0, w, h); g.font = '12px "Segoe UI", system-ui, sans-serif'; g.textBaseline = 'middle';
+  g.fillStyle = '#0b111c'; g.fillRect(0, 0, w, h); g.font = '12px "Inter Variable", "Segoe UI", system-ui, sans-serif'; g.textBaseline = 'middle';
   const mx = Math.max(...items.map((i) => Math.abs(i.value)), 1e-9); const rowH = Math.min(30, (h - 28) / Math.max(items.length, 1));
-  g.fillStyle = '#cfe0d8'; g.fillText(title, 8, 12);
+  g.fillStyle = '#d5deea'; g.fillText(title, 8, 12);
   items.forEach((it, i) => {
     const y = 26 + i * rowH; const bw = ((w - 200) * Math.abs(it.value)) / mx;
-    g.fillStyle = '#9bb0a7'; g.textAlign = 'right'; g.fillText(it.label, 132, y + rowH / 2 - 2);
+    g.fillStyle = '#94a3bb'; g.textAlign = 'right'; g.fillText(it.label, 132, y + rowH / 2 - 2);
     g.fillStyle = it.color ?? seriesColor(i); g.fillRect(140, y + 2, Math.max(bw, 1), rowH - 8);
-    g.fillStyle = '#cfe0d8'; g.textAlign = 'left'; g.fillText(`${fmtTick(it.value)} ${unit}`, 146 + bw, y + rowH / 2 - 2);
+    g.fillStyle = '#d5deea'; g.textAlign = 'left'; g.fillText(`${fmtTick(it.value)} ${unit}`, 146 + bw, y + rowH / 2 - 2);
   });
 }
 
@@ -171,19 +172,19 @@ export function drawScatter(canvas, points, { xLabel = '', yLabel = '', line = f
   const dpr = Math.min(window.devicePixelRatio || 1, 2), w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
   canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
   const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.fillStyle = '#0a100e'; g.fillRect(0, 0, w, h); g.font = `${clean ? 12.5 : 11}px "Segoe UI", system-ui, sans-serif`;
-  const pts = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)); if (!pts.length) { g.fillStyle = '#9bb0a7'; g.fillText('No numeric data to plot', 12, 20); return; }
+  g.fillStyle = '#0b111c'; g.fillRect(0, 0, w, h); g.font = `${clean ? 12.5 : 11}px "Inter Variable", "Segoe UI", system-ui, sans-serif`;
+  const pts = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)); if (!pts.length) { g.fillStyle = '#94a3bb'; g.fillText('No numeric data to plot', 12, 20); return; }
   let xl = Math.min(...pts.map((p) => p.x)), xh = Math.max(...pts.map((p) => p.x)), yl = Math.min(...pts.map((p) => p.y)), yh = Math.max(...pts.map((p) => p.y));
   if (xh - xl < 1e-12) { xl -= 1; xh += 1; } if (yh - yl < 1e-12) { yl -= 1; yh += 1; }
   if (clean) { const m = (yh - yl) * 0.12; yl -= m; yh += m; }
   const P = clean ? { l: 56, r: 16, t: yLabel ? 24 : 12, b: xLabel ? 40 : 24 } : { l: 62, r: 14, t: 14, b: 32 };
   const X = (x) => P.l + ((x - xl) / (xh - xl)) * (w - P.l - P.r), Y = (y) => h - P.b - ((y - yl) / (yh - yl)) * (h - P.t - P.b);
-  g.strokeStyle = '#1b2823'; g.fillStyle = '#9bb0a7'; g.textBaseline = 'middle';
+  g.strokeStyle = '#1a2436'; g.fillStyle = '#94a3bb'; g.textBaseline = 'middle';
   g.textAlign = 'right'; for (const v of niceTicks(yl, yh, clean ? 4 : 5)) { const y = Y(v); g.beginPath(); g.moveTo(P.l, y); g.lineTo(w - P.r, y); g.stroke(); g.fillText(fmtTick(v), P.l - 6, y); }
   g.textAlign = 'center'; for (const v of niceTicks(xl, xh, clean ? 4 : 5)) { const x = X(v); if (!clean) { g.beginPath(); g.moveTo(x, P.t); g.lineTo(x, h - P.b); g.stroke(); } g.fillText(fmtTick(v), x, h - P.b + 13); }
-  if (clean) { g.textAlign = 'center'; g.fillText(xLabel, (P.l + w - P.r) / 2, h - 9); g.textAlign = 'left'; g.fillStyle = '#cfe0d8'; g.fillText(yLabel, P.l, 10); }
+  if (clean) { g.textAlign = 'center'; g.fillText(xLabel, (P.l + w - P.r) / 2, h - 9); g.textAlign = 'left'; g.fillStyle = '#d5deea'; g.fillText(yLabel, P.l, 10); }
   else { g.fillText(xLabel, w / 2, h - 6); g.save(); g.translate(12, h / 2); g.rotate(-Math.PI / 2); g.fillText(yLabel, 0, 0); g.restore(); }
-  if (line) { g.strokeStyle = clean ? '#7f958c' : '#2bd9a0'; g.lineWidth = clean ? 2 : 1; g.beginPath(); pts.slice().sort((a, b) => a.x - b.x).forEach((p, i) => (i ? g.lineTo(X(p.x), Y(p.y)) : g.moveTo(X(p.x), Y(p.y)))); g.stroke(); g.lineWidth = 1; }
-  for (const p of pts) { g.fillStyle = p.color ?? '#2bd9a0'; g.beginPath(); g.arc(X(p.x), Y(p.y), clean ? 6 : 4.5, 0, Math.PI * 2); g.fill(); if (clean) { g.strokeStyle = '#0a100e'; g.lineWidth = 1.5; g.stroke(); } }
+  if (line) { g.strokeStyle = clean ? '#7f958c' : '#4cc6ea'; g.lineWidth = clean ? 2 : 1; g.beginPath(); pts.slice().sort((a, b) => a.x - b.x).forEach((p, i) => (i ? g.lineTo(X(p.x), Y(p.y)) : g.moveTo(X(p.x), Y(p.y)))); g.stroke(); g.lineWidth = 1; }
+  for (const p of pts) { g.fillStyle = p.color ?? '#4cc6ea'; g.beginPath(); g.arc(X(p.x), Y(p.y), clean ? 6 : 4.5, 0, Math.PI * 2); g.fill(); if (clean) { g.strokeStyle = '#0b111c'; g.lineWidth = 1.5; g.stroke(); } }
 }
 export { CHANNEL_META };

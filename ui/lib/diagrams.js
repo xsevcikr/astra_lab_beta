@@ -1,5 +1,5 @@
 // Small inline SVG diagrams used by the Aerospace Academy (theme-aware via CSS variables).
-const C = { line: '#8da399', text: '#e3efe9', blue: '#2bd9a0', green: '#84e060', red: '#ff5c6a', amber: '#ffb84a', violet: '#c07cff', body: '#cfe0d8', dark: '#0f2f27' };
+const C = { line: '#8da399', text: '#e3efe9', blue: '#4cc6ea', green: '#84e060', red: '#ff5c6a', amber: '#ffb84a', violet: '#c07cff', body: '#d5deea', dark: '#0f2f27' };
 const svg = (inner, vb = '0 0 420 210') => `<svg viewBox="${vb}" role="img" xmlns="http://www.w3.org/2000/svg" class="diagram-svg"><defs>
 <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>${inner}</svg>`;
 const T = (x, y, s, col = C.text, anchor = 'middle', size = 12) => `<text x="${x}" y="${y}" fill="${col}" font-size="${size}" text-anchor="${anchor}" font-family="Segoe UI, Arial, sans-serif">${s}</text>`;
@@ -40,7 +40,7 @@ Object.assign(DIAGRAMS, {
   'weight-mass': () => svg(`${T(210, 18, 'Same stuff, same mass. Different weight.', C.text, 'middle', 13)}
 <circle cx="105" cy="105" r="34" fill="#1c4a3d" stroke="${C.blue}"/>${T(105, 109, 'Earth', C.text)}<rect x="88" y="52" width="34" height="26" rx="4" fill="${C.amber}"/>${T(105, 70, '60 kg', '#222')}${arrow(105, 80, 105, 66, C.red).replace('marker-end="url(#ah)"', '')}
 ${T(105, 170, 'Weight: 590 N', C.red)}${T(105, 188, '(gravity pulls hard)', C.line, 'middle', 11)}
-<circle cx="315" cy="105" r="18" fill="#33463f" stroke="${C.line}"/>${T(315, 109, 'Moon', C.text, 'middle', 10)}<rect x="298" y="68" width="34" height="26" rx="4" fill="${C.amber}"/>${T(315, 86, '60 kg', '#222')}
+<circle cx="315" cy="105" r="18" fill="#2e3b52" stroke="${C.line}"/>${T(315, 109, 'Moon', C.text, 'middle', 10)}<rect x="298" y="68" width="34" height="26" rx="4" fill="${C.amber}"/>${T(315, 86, '60 kg', '#222')}
 ${T(315, 170, 'Weight: 98 N', C.green)}${T(315, 188, '(gravity pulls gently)', C.line, 'middle', 11)}`),
   nozzle: () => svg(`<path d="M20 70 L130 85 L170 85 L400 30 L400 180 L170 125 L130 125 L20 140 Z" fill="${C.dark}" stroke="${C.blue}" stroke-width="2"/>
 <path d="M150 85 v40" stroke="${C.amber}" stroke-dasharray="4 3"/>${T(60, 112, 'Hot, slow gas', C.red)}${T(150, 72, 'Throat (Mach 1)', C.amber)}${T(315, 112, 'Fast gas, cooler', C.green)}${arrow(180, 105, 270, 105, C.green)}
@@ -61,7 +61,7 @@ ${T(210, 18, 'Delta-v budget: add up every step (km/s)', C.text, 'middle', 13)}$
   'solar-distance': () => svg(`<circle cx="40" cy="105" r="24" fill="${C.amber}"/>${T(40, 145, 'Sun', C.text)}
 ${[['Earth', 120, '1361 W', 1], ['Mars', 230, '590 W', 0.6], ['Jupiter', 360, '50 W', 0.18]].map(([n, x, w, f]) => `<circle cx="${x}" cy="105" r="${8 + 4 * f}" fill="#1c4a3d" stroke="${C.blue}"/>${T(x, 140, n, C.text)}${T(x, 156, w + ' per m²', C.green, 'middle', 11)}<rect x="${x - 12}" y="${60 - 30 * f}" width="24" height="${12 + 30 * f}" fill="${C.green}" opacity=".7"/>`).join('')}
 ${T(210, 18, 'Farther from the Sun means less power', C.text, 'middle', 13)}${T(210, 195, 'Twice as far = four times less sunlight', C.line, 'middle', 11)}`),
-  'signal-delay': () => svg(`<circle cx="50" cy="105" r="22" fill="#1c4a3d" stroke="${C.blue}"/>${T(50, 109, 'Earth', C.text, 'middle', 11)}<circle cx="150" cy="105" r="10" fill="#33463f" stroke="${C.line}"/>${T(150, 135, 'Moon', C.text, 'middle', 11)}<circle cx="370" cy="105" r="14" fill="#7a3d2c" stroke="${C.red}"/>${T(370, 140, 'Mars', C.text, 'middle', 11)}
+  'signal-delay': () => svg(`<circle cx="50" cy="105" r="22" fill="#1c4a3d" stroke="${C.blue}"/>${T(50, 109, 'Earth', C.text, 'middle', 11)}<circle cx="150" cy="105" r="10" fill="#2e3b52" stroke="${C.line}"/>${T(150, 135, 'Moon', C.text, 'middle', 11)}<circle cx="370" cy="105" r="14" fill="#7a3d2c" stroke="${C.red}"/>${T(370, 140, 'Mars', C.text, 'middle', 11)}
 ${arrow(75, 100, 140, 100, C.green)}${T(110, 85, '1.3 s', C.green, 'middle', 12)}${arrow(75, 112, 350, 112, C.amber)}${T(215, 160, '3 to 22 minutes', C.amber, 'middle', 12)}
 ${T(210, 18, 'Radio is fast, but space is big', C.text, 'middle', 13)}${T(210, 195, 'So a rover must drive itself', C.line, 'middle', 11)}`),
   backups: () => svg(`${T(105, 24, 'Series: all must work', C.text, 'middle', 12)}${box(20, 50, 50, 36, 'A')}${box(95, 50, 50, 36, 'B')}${box(170, 50, 50, 36, 'C')}${T(120, 112, '0.95 × 0.95 × 0.95 = 0.86', C.red, 'middle', 11)}

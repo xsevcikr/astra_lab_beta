@@ -1,0 +1,366 @@
+/* =====================================================================================================================
+   ASTRA LAB 2.8 design system
+   ---------------------------------------------------------------------------------------------------------------------
+   Loaded after styles.css, so it is the last word on the look. One typeface, one type scale, a 4 px spacing grid,
+   one accent colour, three elevations and a single set of component rules. The three colour looks (Deep space,
+   Daylight, High contrast) only swap the tokens at the top; the component rules below read the tokens.
+
+   Component rules are written as `body[data-look] .x` so they sit above the older look layers in styles.css
+   (including the generated Daylight block) without !important. fx.js always sets data-look on <body>.
+   Presentation only: nothing here changes a result.
+   ===================================================================================================================== */
+
+@font-face { font-family: "Inter Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url('../assets/fonts/inter-latin-wght-normal.woff2') format('woff2-variations'), url('../assets/fonts/inter-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Inter Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url('../assets/fonts/inter-latin-ext-wght-normal.woff2') format('woff2-variations'), url('../assets/fonts/inter-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "JetBrains Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 800; src: url('../assets/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations'), url('../assets/fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "JetBrains Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 800; src: url('../assets/fonts/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2-variations'), url('../assets/fonts/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+/* ---------------------------------------------------------------------------------------------------- 1. tokens */
+:root {
+  /* type */
+  --font: "Inter Variable", "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --display: "Inter Variable", "Inter", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --serif: var(--font);
+  --mono: "JetBrains Mono Variable", "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  --fs-2xs: 10.5px; --fs-xs: 11.5px; --fs-sm: 12.5px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 24px; --fs-3xl: 30px;
+  --fw-regular: 420; --fw-medium: 520; --fw-semibold: 600; --fw-bold: 680;
+  /* 4 px grid */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+  /* shape */
+  --radius-xs: 6px; --radius-sm: 8px; --radius: 12px; --radius-lg: 16px; --pill: 999px;
+  --control-h: 32px; --control-h-sm: 26px;
+  /* motion */
+  --ease: cubic-bezier(.2,.8,.2,1); --dur: .18s;
+
+  /* colour: Deep space (default) */
+  --bg: #080d17; --bg-glow: rgba(56,140,220,.10);
+  --surface-0: #0b111c;                      /* sidebar, bars */
+  --panel: rgba(17,25,39,.86);               /* cards */
+  --panel-solid: #111927;
+  --panel-2: #0d1420;                        /* sunken: inputs, stat tiles */
+  --panel-3: #18233a;                        /* raised / hover */
+  --line: rgba(148,172,214,.13); --line-strong: rgba(148,172,214,.24); --grid: rgba(148,172,214,.05);
+  --text: #e7edf6; --text-strong: #ffffff; --muted: #94a3bb; --subtle: #66768f;
+  --accent: #4cc6ea; --accent-hi: #78d6f2; --accent-2: #17607c; --accent-ink: #03131c;
+  --accent-tint: rgba(76,198,234,.13); --accent-glow: rgba(76,198,234,.32);
+  --ok: #4fd18b; --warn: #f2b84b; --bad: #f2697a; --violet: #a993ff; --cyan: #7fd7ff;
+  --ok-tint: rgba(79,209,139,.13); --warn-tint: rgba(242,184,75,.13); --bad-tint: rgba(242,105,122,.13);
+  --glass: rgba(10,16,28,.78);
+  --shadow-1: 0 1px 2px rgba(0,0,0,.35);
+  --shadow-2: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.22);
+  --shadow-3: 0 24px 64px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.3);
+  --shadow: var(--shadow-2);
+  --focus: 0 0 0 3px rgba(76,198,234,.35);
+  --glow: 0 0 0 1px var(--line-strong);
+  --edge: none;
+  --stage-bg: #05080f;
+}
+body[data-look="daylight"] {
+  --bg: #f2f5f9; --bg-glow: rgba(30,120,200,.06);
+  --surface-0: #ffffff;
+  --panel: #ffffff; --panel-solid: #ffffff; --panel-2: #f5f7fa; --panel-3: #eaeff5;
+  --line: rgba(16,32,64,.11); --line-strong: rgba(16,32,64,.2); --grid: rgba(16,32,64,.04);
+  --text: #111c2d; --text-strong: #050b16; --muted: #56657c; --subtle: #7d8aa0;
+  --accent: #0b7fae; --accent-hi: #0a92c8; --accent-2: #0b6d95; --accent-ink: #ffffff;
+  --accent-tint: rgba(11,127,174,.1); --accent-glow: rgba(11,127,174,.25);
+  --ok: #138a4c; --warn: #a65f00; --bad: #c92f45; --violet: #6a4fd6; --cyan: #0b6fa0;
+  --ok-tint: rgba(19,138,76,.1); --warn-tint: rgba(166,95,0,.1); --bad-tint: rgba(201,47,69,.09);
+  --glass: rgba(255,255,255,.86);
+  --shadow-1: 0 1px 2px rgba(16,32,64,.08);
+  --shadow-2: 0 1px 2px rgba(16,32,64,.06), 0 4px 16px rgba(16,32,64,.06);
+  --shadow-3: 0 24px 64px rgba(16,32,64,.2), 0 2px 6px rgba(16,32,64,.08);
+  --shadow: var(--shadow-2);
+  --focus: 0 0 0 3px rgba(11,127,174,.25);
+  --stage-bg: #05080f;
+}
+body[data-look="contrast"] {
+  --bg: #000; --bg-glow: transparent; --surface-0: #000;
+  --panel: #000; --panel-solid: #000; --panel-2: #000; --panel-3: #1a1a1a;
+  --line: #ffffff; --line-strong: #ffffff; --grid: transparent;
+  --text: #fff; --text-strong: #fff; --muted: #e8e8e8; --subtle: #d0d0d0;
+  --accent: #00ffb3; --accent-hi: #66ffd1; --accent-2: #00ffb3; --accent-ink: #000;
+  --accent-tint: rgba(0,255,179,.18); --accent-glow: transparent;
+  --ok: #6dff6d; --warn: #ffd400; --bad: #ff6b78; --cyan: #5fe0ff;
+  --ok-tint: transparent; --warn-tint: transparent; --bad-tint: transparent;
+  --glass: rgba(0,0,0,.94);
+  --shadow-1: none; --shadow-2: none; --shadow-3: none; --shadow: none;
+  --focus: 0 0 0 3px #ffd400;
+}
+
+/* ---------------------------------------------------------------------------------------------------- 2. base */
+html, body { font: var(--fw-regular) var(--fs-md)/1.5 var(--font); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-feature-settings: "cv11", "ss03"; }
+body[data-look] { color: var(--text); }
+html, body, body[data-look="space"] { background: var(--bg); }
+body[data-look="space"]::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(1200px 600px at 70% -10%, var(--bg-glow), transparent 70%), radial-gradient(900px 500px at -10% 110%, rgba(120,90,220,.06), transparent 70%); }
+body[data-look="daylight"], html:has(body[data-look="daylight"]) { background: var(--bg); }
+code, .mono, kbd { font-family: var(--mono); font-size: .9em; font-variant-ligatures: none; }
+.num, td.num, .stat-v, .kv dd, .num-tick { font-variant-numeric: tabular-nums; }
+::selection { background: var(--accent-tint); }
+
+/* headings: plain, solid, tight. No gradients, no Arial Black. */
+body[data-look] h1, body[data-look] h2, body[data-look] h3, body[data-look] h4, body[data-look] .topbar .title {
+  background: none; -webkit-text-fill-color: currentColor; text-shadow: none; font-family: var(--display); }
+body[data-look] h1 { font-size: var(--fs-2xl); font-weight: var(--fw-bold); letter-spacing: -.022em; line-height: 1.2; color: var(--text-strong); }
+body[data-look] h2 { font-size: var(--fs-lg); font-weight: var(--fw-semibold); letter-spacing: -.011em; line-height: 1.3; color: var(--text-strong); }
+body[data-look] h3 { font-family: var(--font); font-size: var(--fs-xs); font-weight: var(--fw-semibold); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+body[data-look] h4 { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--text); }
+body[data-look] .page-head h1, body[data-look] .screen > .page > h1 { font-size: var(--fs-3xl); font-weight: var(--fw-bold); letter-spacing: -.028em; text-shadow: none; }
+body[data-look] .page-head p { color: var(--muted); font-size: var(--fs-md); margin-top: var(--sp-1); }
+body[data-look] .muted { color: var(--muted); }
+body[data-look] a { color: var(--accent); text-underline-offset: 2px; }
+
+/* ---------------------------------------------------------------------------------------------------- 3. frame: sidebar, top bar, status bar */
+body[data-look] .nav { background: var(--surface-0); border-right: 1px solid var(--line); padding: var(--sp-3) var(--sp-2) var(--sp-4); gap: 1px; backdrop-filter: none; }
+body[data-look] .brand { font-family: var(--display); font-weight: var(--fw-bold); font-size: 14px; letter-spacing: .2em; color: var(--text-strong); text-shadow: none; padding: var(--sp-2) var(--sp-2) var(--sp-4); gap: 10px; }
+body[data-look] .brand em { color: var(--accent); font-style: normal; }
+body[data-look] .brand small { font-size: var(--fs-2xs); letter-spacing: .01em; font-weight: var(--fw-regular); color: var(--subtle); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-look] .logo-mark { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: var(--radius-sm); font-size: 15px; letter-spacing: 0;
+  color: var(--accent-ink); background: linear-gradient(140deg, var(--accent-hi), var(--accent) 55%, var(--accent-2)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), var(--shadow-1); }
+body[data-look] .nav-group { margin: var(--sp-4) var(--sp-2) var(--sp-1); font-size: var(--fs-2xs); font-weight: var(--fw-semibold); letter-spacing: .1em; text-transform: uppercase; color: var(--subtle); }
+body[data-look] .nav-item { font-family: var(--font); font-size: 13.5px; font-weight: var(--fw-medium); letter-spacing: 0; text-transform: none; color: var(--muted);
+  padding: 6px var(--sp-2); border: 1px solid transparent; border-radius: var(--radius-sm); gap: 10px; box-shadow: none; background: transparent; transition: background var(--dur), color var(--dur); }
+body[data-look] .nav-item .ico { width: 20px; flex: none; display: inline-grid; place-items: center; color: var(--subtle); opacity: 1; transition: color var(--dur); }
+body[data-look] .nav-item .sub { font-size: var(--fs-2xs); color: var(--subtle); opacity: 1; font-weight: var(--fw-regular); margin-top: 1px; }
+body[data-look] .nav-item:hover { background: var(--panel-3); color: var(--text); }
+body[data-look] .nav-item:hover .ico { color: var(--text); }
+body[data-look] .nav-item.active { background: var(--accent-tint); color: var(--text-strong); border-color: transparent; box-shadow: inset 2px 0 0 var(--accent); }
+body[data-look] .nav-item.active .ico { color: var(--accent); }
+body[data-look] .nav-item.active .sub { color: var(--muted); }
+
+body[data-look] .topbar { background: var(--glass); backdrop-filter: blur(12px) saturate(1.2); border-bottom: 1px solid var(--line); gap: var(--sp-2); padding: 0 var(--sp-4); }
+body[data-look] .topbar .title { font-size: 15px; font-weight: var(--fw-semibold); letter-spacing: -.01em; color: var(--text-strong); }
+body[data-look] .topbar .muted { color: var(--subtle); }
+body[data-look] .topbar .tb-proj { color: var(--muted); }
+body[data-look] .topbar .btn, body[data-look] .topbar .input, body[data-look] .topbar select { height: 30px; }
+body[data-look] .topbar .btn { background: transparent; border-color: transparent; color: var(--muted); padding: 0 var(--sp-2); font-weight: var(--fw-medium); }
+body[data-look] .topbar .btn:hover:not(:disabled) { background: var(--panel-3); color: var(--text); border-color: transparent; }
+body[data-look] .topbar .unit-toggle { border-color: var(--line); background: var(--panel-2); padding: 0 3px; gap: 0; }
+body[data-look] .unit-toggle span { padding: 2px 8px; border-radius: var(--radius-xs); color: var(--subtle); }
+body[data-look] .unit-toggle span.on { background: var(--panel-3); color: var(--text-strong); box-shadow: var(--shadow-1); }
+body[data-look] .unit-toggle .sep { display: none; }
+body[data-look] .tb-save { font-size: var(--fs-xs); }
+
+body[data-look] .statusbar { background: var(--surface-0); border-top: 1px solid var(--line); color: var(--subtle); font-size: var(--fs-xs); gap: var(--sp-4); }
+body[data-look] .dot { width: 7px; height: 7px; }
+body[data-look] .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-tint); }
+
+/* ---------------------------------------------------------------------------------------------------- 4. controls */
+body[data-look] .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--control-h); padding: 0 14px; border-radius: var(--radius-sm);
+  font-family: var(--font); font-size: 13px; font-weight: var(--fw-medium); letter-spacing: 0; line-height: 1.2;
+  background: var(--panel-3); border: 1px solid var(--line-strong); color: var(--text); box-shadow: var(--shadow-1); text-shadow: none;
+  transition: background var(--dur), border-color var(--dur), color var(--dur), box-shadow var(--dur), transform .08s; }
+body[data-look] .btn:hover:not(:disabled) { background: color-mix(in srgb, var(--panel-3) 80%, var(--text) 8%); border-color: color-mix(in srgb, var(--line-strong) 60%, var(--text) 25%); box-shadow: var(--shadow-1); }
+body[data-look] .btn:active:not(:disabled) { transform: translateY(1px); }
+body[data-look] .btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); font-weight: var(--fw-semibold); box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255,255,255,.18); }
+body[data-look] .btn.primary:hover:not(:disabled) { background: var(--accent-hi); border-color: transparent; }
+body[data-look] .btn.danger { background: transparent; border-color: color-mix(in srgb, var(--bad) 45%, transparent); color: var(--bad); }
+body[data-look] .btn.danger:hover:not(:disabled) { background: var(--bad-tint); border-color: var(--bad); }
+body[data-look] .btn.ghost { background: transparent; border-color: var(--line-strong); color: var(--text); box-shadow: none; }
+body[data-look] .btn.ghost:hover:not(:disabled) { background: var(--panel-3); }
+body[data-look] .btn.small { min-height: var(--control-h-sm); padding: 0 10px; font-size: 12px; border-radius: var(--radius-xs); }
+body[data-look] .btn.big { min-height: 44px; padding: 0 22px; font-size: 15px; font-weight: var(--fw-semibold); border-radius: 10px; border-width: 1px; }
+body[data-look] .btn.big:not(.primary) { background: var(--glass); border-color: var(--line-strong); backdrop-filter: blur(8px); }
+body[data-look] .btn.primary.big { background: var(--accent); color: var(--accent-ink); }
+body[data-look] .btn:disabled { opacity: .45; box-shadow: none; }
+body[data-look] .icon-btn { color: var(--muted); border-radius: var(--radius-xs); } body[data-look] .icon-btn:hover { color: var(--text); background: var(--panel-3); }
+
+body[data-look] .input, body[data-look] select.input, body[data-look] textarea.input, body[data-look] .topbar select {
+  background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--text); padding: 5px 10px; min-height: var(--control-h); box-shadow: none;
+  transition: border-color var(--dur), box-shadow var(--dur); }
+body[data-look] textarea.input { min-height: 0; padding: 8px 10px; line-height: 1.5; }
+body[data-look] .input:hover, body[data-look] select:hover { border-color: color-mix(in srgb, var(--line-strong) 60%, var(--text) 20%); }
+body[data-look] .input:focus, body[data-look] select:focus, body[data-look] textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus); }
+body[data-look] select option { background: var(--panel-solid); color: var(--text); }
+body[data-look] label.field { gap: 6px; font-size: var(--fs-xs); font-weight: var(--fw-medium); color: var(--muted); }
+body[data-look] .unit { color: var(--subtle); font-size: var(--fs-xs); }
+body[data-look] input[type="checkbox"], body[data-look] input[type="radio"], body[data-look] input[type="range"] { accent-color: var(--accent); }
+
+body[data-look] .btn:focus-visible, body[data-look] .nav-item:focus-visible, body[data-look] .tab:focus-visible, body[data-look] .chip:focus-visible, body[data-look] .portal:focus-visible { outline: none; box-shadow: var(--focus); }
+
+body[data-look] .chip { border-radius: var(--pill); padding: 3px 12px; font-size: var(--fs-xs); font-weight: var(--fw-medium); background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); transition: all var(--dur); }
+body[data-look] .chip:hover { color: var(--text); border-color: var(--line-strong); background: var(--panel-3); }
+body[data-look] .chip.active { background: var(--accent-tint); color: var(--text-strong); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* tabs: quiet underline, not pills */
+body[data-look] .tabs { gap: var(--sp-1); border-bottom: 1px solid var(--line); }
+body[data-look] .tab, body[data-look] .tabs button.tab { border-radius: 0; background: transparent; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 8px 12px; color: var(--muted); font-weight: var(--fw-medium); font-size: 13px; }
+body[data-look] .tab:hover { color: var(--text); }
+body[data-look] .tab.active { color: var(--text-strong); border-bottom-color: var(--accent); background: transparent; box-shadow: none; }
+
+/* ---------------------------------------------------------------------------------------------------- 5. surfaces */
+body[data-look] .panel, body[data-look] .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-2); backdrop-filter: blur(14px) saturate(1.1); }
+body[data-look] .panel::before { display: none; }
+body[data-look] .panel-head { padding: 10px var(--sp-4); min-height: 44px; border-bottom: 1px solid var(--line); gap: var(--sp-2); }
+body[data-look] .panel-head h2, body[data-look] .panel > h2, body[data-look] .panel h2 { font-family: var(--display); font-size: 14.5px; font-weight: var(--fw-semibold); letter-spacing: -.005em; color: var(--text-strong); }
+body[data-look] .panel-head h3 { font-family: var(--display); font-size: 14px; font-weight: var(--fw-semibold); letter-spacing: -.005em; text-transform: none; color: var(--text-strong); }
+body[data-look] .panel-body { padding: var(--sp-4); }
+body[data-look] .panel.flush .panel-body { padding: 0; }
+body[data-look] .page { padding: var(--sp-6) var(--sp-8) 48px; gap: var(--sp-4); }
+body[data-look] .grid { gap: var(--sp-4); }
+
+body[data-look] .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: var(--sp-3) 14px; box-shadow: none; backdrop-filter: none; transition: border-color var(--dur); }
+body[data-look] .stat:hover { border-color: var(--line-strong); box-shadow: none; }
+body[data-look] .stat-l { font-size: var(--fs-2xs); font-weight: var(--fw-semibold); letter-spacing: .07em; text-transform: uppercase; color: var(--subtle); }
+body[data-look] .stat-v { font-family: var(--display); font-size: 22px; font-weight: var(--fw-semibold); letter-spacing: -.02em; color: var(--text-strong); line-height: 1.25; margin-top: 2px; }
+body[data-look] .stat-s { font-size: var(--fs-xs); color: var(--muted); }
+body[data-look] .stat.ok { box-shadow: inset 3px 0 0 var(--ok); } body[data-look] .stat.ok .stat-v { color: var(--ok); }
+body[data-look] .stat.warn { box-shadow: inset 3px 0 0 var(--warn); } body[data-look] .stat.warn .stat-v { color: var(--warn); }
+body[data-look] .stat.bad { box-shadow: inset 3px 0 0 var(--bad); } body[data-look] .stat.bad .stat-v { color: var(--bad); }
+
+body[data-look] .kv { gap: 6px var(--sp-4); } body[data-look] .kv dt { color: var(--muted); font-size: 13px; } body[data-look] .kv dd { color: var(--text); font-weight: var(--fw-medium); }
+
+/* tables */
+body[data-look] table { font-size: 13px; }
+body[data-look] th, body[data-look] td { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+body[data-look] th { font-size: var(--fs-2xs); font-weight: var(--fw-semibold); letter-spacing: .07em; text-transform: uppercase; color: var(--subtle); background: var(--panel-solid); border-bottom-color: var(--line-strong); }
+body[data-look] tbody tr:last-child td { border-bottom: 0; }
+body[data-look] tr.clickable:hover td, body[data-look] tbody tr:hover td { background: color-mix(in srgb, var(--panel-3) 55%, transparent); }
+body[data-look] tr.sel td, body[data-look] .pro-table tr.sel td { background: var(--accent-tint); }
+
+/* badges: tinted, not solid blocks */
+body[data-look] .badge { border-radius: var(--pill); padding: 1px 8px; font-size: var(--fs-2xs); font-weight: var(--fw-semibold); letter-spacing: .03em; line-height: 1.6; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+body[data-look] .badge.status-success, body[data-look] .badge.conf-confirmed, body[data-look] .badge.data-real { color: var(--ok); background: var(--ok-tint); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+body[data-look] .badge.status-failure { color: var(--bad); background: var(--bad-tint); border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+body[data-look] .badge.status-aborted, body[data-look] .badge.status-unknown, body[data-look] .badge.conf-likely, body[data-look] .badge.data-estimated { color: var(--warn); background: var(--warn-tint); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+body[data-look] .badge.data-user { color: var(--accent); background: var(--accent-tint); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+body[data-look] .badge.data-fictional { color: var(--violet); background: color-mix(in srgb, var(--violet) 13%, transparent); border-color: color-mix(in srgb, var(--violet) 35%, transparent); }
+
+/* notes */
+body[data-look] .note { border-radius: 10px; padding: 10px 14px; font-size: 13px; line-height: 1.5; border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); background: var(--warn-tint); color: var(--text); }
+body[data-look] .note.info { border-color: color-mix(in srgb, var(--accent) 32%, transparent); background: var(--accent-tint); color: var(--text); }
+
+/* progress */
+body[data-look] .progress { background: var(--panel-3); border-radius: var(--pill); overflow: hidden; }
+body[data-look] .progress > div { background: var(--accent); box-shadow: none; border-radius: var(--pill); }
+
+/* empty states */
+body[data-look] .empty { padding: 48px 24px; color: var(--muted); }
+body[data-look] .empty-title { font-family: var(--display); font-size: var(--fs-xl); font-weight: var(--fw-semibold); letter-spacing: -.015em; color: var(--text-strong); margin-bottom: var(--sp-2); }
+body[data-look] .empty .row { margin-top: var(--sp-4); }
+
+/* modals, toasts, popovers */
+body[data-look] .modal-back, body[data-look] .sh-back { background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(4px); }
+body[data-look] .modal, body[data-look] .sh-box { background: var(--panel-solid); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-3); }
+body[data-look] .modal-head { padding: 14px 20px; } body[data-look] .modal-body { padding: 16px 20px; } body[data-look] .modal-foot { padding: 12px 20px; }
+body[data-look] .modal-head h3 { font-family: var(--display); font-size: var(--fs-lg); font-weight: var(--fw-semibold); text-transform: none; letter-spacing: -.01em; color: var(--text-strong); }
+body[data-look] .toast { background: var(--panel-solid); border: 1px solid var(--line-strong); border-left: 3px solid var(--accent); border-radius: 10px; padding: 10px 16px; box-shadow: var(--shadow-3); color: var(--text); }
+body[data-look] .toast.ok { border-left-color: var(--ok); } body[data-look] .toast.bad { border-left-color: var(--bad); }
+
+/* scrollbars */
+body[data-look] ::-webkit-scrollbar { width: 10px; height: 10px; }
+body[data-look] ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 30%, transparent); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+body[data-look] ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--muted) 50%, transparent); background-clip: padding-box; border: 2px solid transparent; }
+body[data-look] ::-webkit-scrollbar-track { background: transparent; }
+
+/* chat */
+body[data-look] .msg { border-radius: var(--radius); }
+body[data-look] .msg.user { background: var(--accent-tint); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+body[data-look] .msg.assistant { background: var(--panel); border-color: var(--line); }
+
+/* 3D frames */
+body[data-look] .stage { background: var(--stage-bg); }
+body[data-look] .vt-btn, body[data-look] .view-btn { border-radius: var(--radius-xs); border: 1px solid var(--line-strong); background: rgba(8,13,22,.72); color: #e7edf6; font-size: 12px; font-weight: var(--fw-medium); box-shadow: none; backdrop-filter: blur(8px); }
+body[data-look] .vt-btn:hover, body[data-look] .vt-btn.on, body[data-look] .view-btn:hover { border-color: var(--accent); box-shadow: none; background: rgba(20,32,52,.85); }
+/* callouts: in the page they are tinted notes; over a 3D view they are dark glass */
+body[data-look] .callout { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; color: var(--text); padding: 8px 12px; box-shadow: none; backdrop-filter: none; }
+body[data-look] .callout.ok { background: var(--ok-tint); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+body[data-look] .callout.ok > b:first-child { color: var(--ok); }
+body[data-look] .callout.bad { background: var(--bad-tint); border-color: color-mix(in srgb, var(--bad) 40%, transparent); color: var(--text); }
+body[data-look] .callout.bad > b:first-child { color: var(--bad); }
+body[data-look] .callout.warn { background: var(--warn-tint); border-color: color-mix(in srgb, var(--warn) 40%, transparent); color: var(--text); }
+body[data-look] .callout.info { background: var(--accent-tint); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+body[data-look="daylight"] .callout { --text: #111c2d; --muted: #56657c; color: var(--text); }
+body[data-look] .fd-goal.fd-yes { color: var(--ok); background: var(--ok-tint); } body[data-look] .fd-goal.fd-no { color: var(--bad); background: var(--bad-tint); }
+body[data-look] .fd-report, body[data-look] .fd-card { border-radius: var(--radius); }
+body[data-look] .hud, body[data-look] .stage .callout, body[data-look] .stage-overlay .callout { border-radius: 10px; border-color: rgba(148,172,214,.22); box-shadow: none; background: rgba(8,13,22,.72); }
+body[data-look] .cockpit { border-color: rgba(148,172,214,.22); box-shadow: 0 8px 30px rgba(0,0,0,.35); background: linear-gradient(180deg, rgba(8,13,22,.45), rgba(6,10,18,.78)); }
+body[data-look] .ck-clock b { font-family: var(--mono); text-shadow: none; }
+body[data-look] .ck-dialread b { text-shadow: none; }
+
+/* ---------------------------------------------------------------------------------------------------- 6. decoration and motion */
+/* Clip-art (astronaut, drifting rocks) only when switched on in Settings -> Look and motion. */
+body:not([data-decor="on"]) #decor, body:not([data-decor="on"]) .home-cover .rock, body:not([data-decor="on"]) .welcome .rock { display: none; }
+#starfield { opacity: .45; }
+#starfield::after { background: none; }
+body[data-look="daylight"] #starfield, body[data-look="contrast"] #starfield, body[data-look="contrast"]::before { display: none; }
+body[data-look] .screen:not(.fill) { background: transparent; }
+body[data-fx="on"] #screen > * { animation: ds-screen-in .32s var(--ease) both; }
+body[data-fx="on"] .panel, body[data-fx="on"] .stat { animation: ds-rise .36s var(--ease) both; }
+@keyframes ds-screen-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ds-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+body[data-fx="off"] *, body[data-fx="off"] *::before { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { body[data-fx="on"] #screen > *, body[data-fx="on"] .panel, body[data-fx="on"] .stat { animation: none; } }
+
+/* ---------------------------------------------------------------------------------------------------- 7. Home */
+body[data-look] .home-eyebrow { font-family: var(--font); font-weight: var(--fw-semibold); font-size: 12px; letter-spacing: .42em; color: rgba(214,232,255,.85); }
+body[data-look] .home-title h1 { font-family: var(--display); font-weight: 760; font-size: clamp(44px, 7.4vw, 92px); letter-spacing: -.045em; line-height: 1; color: #fff; -webkit-text-fill-color: #fff; text-shadow: 0 6px 40px rgba(0,12,40,.7); }
+body[data-look] .home-title h1 em { background: linear-gradient(100deg, #d6f2ff 0%, #8fd8fb 55%, #4fb6ee); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+body[data-look] .home-portals { max-width: 1180px; gap: 10px; }
+body[data-look] .portal { width: 128px; padding: 16px 8px 14px; gap: 2px; border-radius: 16px; border: 1px solid rgba(190,215,255,.22); background: rgba(8,14,28,.55); color: #fff; backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06); transition: transform var(--dur) var(--ease), border-color var(--dur), background var(--dur), box-shadow var(--dur); }
+body[data-look] .portal:hover, body[data-look] .portal:focus-visible { transform: translateY(-3px); border-color: rgba(190,225,255,.55); background: rgba(16,30,56,.7); box-shadow: 0 16px 40px rgba(0,0,0,.35), 0 0 0 1px rgba(120,200,255,.15); }
+body[data-look] .portal.main { background: rgba(76,198,234,.18); border-color: rgba(120,215,245,.7); color: #fff; }
+body[data-look] .portal.main:hover { background: rgba(76,198,234,.28); }
+body[data-look] .portal.main .portal-sub { color: #cfe9f7; }
+body[data-look] .portal-ico { width: 48px; height: 48px; border-radius: 12px; background: rgba(160,205,255,.1); border: 1px solid rgba(180,215,255,.18); color: #fff; }
+body[data-look] .portal.main .portal-ico { background: var(--accent); border-color: transparent; color: #03131c; }
+body[data-look] .portal b { font-family: var(--display); font-weight: var(--fw-semibold); font-size: 15px; letter-spacing: -.01em; margin-top: 8px; }
+body[data-look] .portal-sub { font-size: var(--fs-xs); color: #a9bcd6; }
+body[data-look] .home-more { background: var(--bg); }
+body[data-look] .home-more > summary { font-size: var(--fs-xs); font-weight: var(--fw-semibold); letter-spacing: .08em; color: var(--muted); }
+body[data-look] .app[data-w="xs"] .portal-sub { display: none; }
+body[data-look] .app[data-w="s"] .portal, body[data-look] .app[data-w="xs"] .portal { width: 112px; padding: 12px 6px 10px; }
+body[data-look] .app[data-h="short"] .portal { padding: 10px 8px; width: 120px; }
+
+/* ---------------------------------------------------------------------------------------------------- 8. looks: fixes beyond tokens */
+/* Daylight: the bars and 3D overlays */
+body[data-look="daylight"] .nav { background: var(--surface-0); }
+body[data-look="daylight"] .nav-item.active { background: var(--accent-tint); color: var(--text-strong); }
+body[data-look="daylight"] .topbar { background: rgba(255,255,255,.85); }
+body[data-look="daylight"] .statusbar { background: var(--surface-0); }
+body[data-look="daylight"] .panel, body[data-look="daylight"] .card { background: var(--panel); backdrop-filter: none; }
+body[data-look="daylight"] .btn { background: #fff; }
+body[data-look="daylight"] .btn:hover:not(:disabled) { background: var(--panel-2); }
+body[data-look="daylight"] .btn.primary { background: var(--accent); color: #fff; }
+body[data-look="daylight"] .btn.primary:hover:not(:disabled) { background: var(--accent-2); }
+body[data-look="daylight"] .topbar .btn { background: transparent; }
+body[data-look="daylight"] .topbar .btn:hover:not(:disabled) { background: var(--panel-3); }
+body[data-look="daylight"] .input, body[data-look="daylight"] select.input, body[data-look="daylight"] textarea.input, body[data-look="daylight"] .topbar select { background: #fff; }
+body[data-look="daylight"] .modal, body[data-look="daylight"] .sh-box { background: #fff; }
+body[data-look="daylight"] th { background: var(--panel-2); }
+body[data-look="daylight"] .msg.assistant { background: #fff; }
+body[data-look="daylight"] .logo-mark { color: #fff; }
+body[data-look="daylight"] .vt-btn, body[data-look="daylight"] .view-btn, body[data-look="daylight"] .hud, body[data-look="daylight"] .stage .callout { --text: #e7edf6; --muted: #9fb0c8; color: #e7edf6; }
+/* Daylight keeps the Home cover dark (it is a photo of space) */
+body[data-look="daylight"] .portal { background: rgba(8,14,28,.55); color: #fff; }
+body[data-look="daylight"] .portal.main { background: rgba(76,198,234,.18); }
+
+/* High contrast: hard white outlines, no translucency */
+body[data-look="contrast"] .panel, body[data-look="contrast"] .card, body[data-look="contrast"] .stat, body[data-look="contrast"] .modal, body[data-look="contrast"] .btn, body[data-look="contrast"] .input, body[data-look="contrast"] .chip { border: 2px solid #fff; backdrop-filter: none; box-shadow: none; }
+body[data-look="contrast"] .btn.primary { background: var(--accent); color: #000; border-color: var(--accent); }
+body[data-look="contrast"] .nav-item.active { background: #fff; color: #000; box-shadow: none; } body[data-look="contrast"] .nav-item.active .ico, body[data-look="contrast"] .nav-item.active .sub { color: #000; }
+body[data-look="contrast"] .nav-item, body[data-look="contrast"] .nav-item .ico, body[data-look="contrast"] .nav-group, body[data-look="contrast"] .stat-l, body[data-look="contrast"] th { color: #fff; }
+body[data-look="contrast"] :focus-visible { outline: 3px solid #ffd400 !important; outline-offset: 2px; }
+body[data-look="contrast"] .topbar .btn { border: 2px solid #fff; color: #fff; }
+
+/* ---------------------------------------------------------------------------------------------------- 9. screen details */
+/* Academy and guide tabs: one segmented control */
+body[data-look] .gd-tabs, body[data-look] .academy .ac-tabs { display: inline-flex; flex-wrap: wrap; width: fit-content; gap: 2px; padding: 3px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; }
+body[data-look] .gd-tab, body[data-look] .academy .ac-tabs .gd-tab { background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); padding: 6px 16px; font-size: 13.5px; font-weight: var(--fw-medium); color: var(--muted); box-shadow: none; }
+body[data-look] .gd-tab:hover { color: var(--text); border-color: transparent; }
+body[data-look] .gd-tab.on { background: var(--panel-3); color: var(--text-strong); border-color: var(--line-strong); box-shadow: var(--shadow-1); font-weight: var(--fw-semibold); }
+body[data-look="daylight"] .gd-tab.on { background: #fff; }
+body[data-look] details > summary { cursor: pointer; }
+/* Home cover fills exactly the visible screen (100vh ignored the text-size zoom and pushed the portals off the bottom) */
+body[data-look] .screen:has(.home-root) { display: flex; flex-direction: column; }
+body[data-look] .home-root { flex: 1 0 auto; display: flex; flex-direction: column; }
+body[data-look] .home-cover { flex: 1 0 auto; min-height: 520px; }
+/* custom checkboxes / radios: outline from the tokens so they show in every look */
+body[data-look] input[type="checkbox"], body[data-look] input[type="radio"] { border: 1.5px solid color-mix(in srgb, var(--muted) 70%, transparent); background: var(--panel-2); }
+body[data-look] input[type="checkbox"]:checked, body[data-look] input[type="radio"]:checked { background: var(--accent); border-color: var(--accent); }
+body[data-look] input[type="checkbox"] { border-radius: 5px; }

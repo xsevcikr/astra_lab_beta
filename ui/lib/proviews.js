@@ -1,7 +1,7 @@
 // Small canvas drawings shared by the professional screens (requirements evidence, failure timeline, Monte Carlo, trade study).
 // Colours match the dark theme used by ui/lib/charts.js.
-const BG = '#0a100e', GRID = '#1b2823', TXT = '#9bb0a7', BRIGHT = '#cfe0d8';
-const FONT = '11px "Segoe UI", system-ui, sans-serif';
+const BG = '#0b111c', GRID = '#1a2436', TXT = '#94a3bb', BRIGHT = '#d5deea';
+const FONT = '11px "Inter Variable", "Segoe UI", system-ui, sans-serif';
 function prep(canvas, minH = 120) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = canvas.clientWidth || 600, h = canvas.clientHeight || minH;
@@ -13,7 +13,7 @@ function prep(canvas, minH = 120) {
 const num = (v) => (Math.abs(v) >= 1e4 ? v.toExponential(1) : Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(1) : v.toFixed(2));
 
 /** One telemetry channel against time with a marked moment and an optional limit line. */
-export function drawEvidence(canvas, { t, y, label = '', unit = '', mark = null, limit = null, color = '#2bd9a0', extra = null }) {
+export function drawEvidence(canvas, { t, y, label = '', unit = '', mark = null, limit = null, color = '#4cc6ea', extra = null }) {
   const { g, w, h } = prep(canvas, 150); const L = 52, R = 10, T = 18, B = 22, pw = w - L - R, ph = h - T - B;
   let lo = Infinity, hi = -Infinity;
   const take = (arr) => { for (const v of arr) if (Number.isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } };

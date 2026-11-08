@@ -30,6 +30,7 @@ export const DEFAULT_APP_SETTINGS = {
   sound: false,                     // small sound effects, engine rumble and countdown beeps (off by default)
   look: 'space',                    // 'space' (dark) | 'daylight' (light) | 'contrast' (high contrast)
   fx: true,                         // animations: screen glide, parallax stars, T-minus intro
+  decor: false,                     // 2.8: floating astronaut and drifting rocks behind the screens (off: calmer, more professional)
   resultsSeen: false,               // opened 'What happened?' after a flight (Home checklist)
   tourDone: false,                  // first-run guided tour (Beginner) already shown
   lastProject: null,

@@ -11,7 +11,7 @@ const fsp = fs.promises;
 const APP_ROOT = app.getAppPath();
 const SERVED_DIRS = ['ui', 'src', 'physics', 'ai', 'data', 'assets', 'documentation'];
 const SMOKE = process.argv.includes('--smoke-test');
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.md': 'text/plain' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.md': 'text/plain' };
 
 // ------------------------------------------------------------------------------------------------------------------ paths
 let DATA_DIR, LOG_FILE, USER_DIR;

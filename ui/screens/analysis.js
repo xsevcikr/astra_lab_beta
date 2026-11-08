@@ -140,7 +140,7 @@ export default {
     function dvPanel() {
       const { m } = S.data; if (!(m.dvIdeal > 0)) return null;
       const c = h('canvas', { style: { width: '100%', height: '140px', display: 'block', border: '1px solid var(--line)', borderRadius: '6px' } });
-      setTimeout(() => drawBars(c, [{ label: 'Delivered (ideal)', value: m.dvIdeal, color: '#2bd9a0' }, { label: 'Gravity loss', value: m.dvGravity ?? 0, color: '#ff7a45' }, { label: 'Drag loss', value: m.dvDrag ?? 0, color: '#c07cff' }, { label: 'Steering loss', value: m.dvSteering ?? 0, color: '#ffd23f' }], { unit: 'm/s', title: 'Delta-v budget of the flight' }), 30);
+      setTimeout(() => drawBars(c, [{ label: 'Delivered (ideal)', value: m.dvIdeal, color: '#4cc6ea' }, { label: 'Gravity loss', value: m.dvGravity ?? 0, color: '#ff7a45' }, { label: 'Drag loss', value: m.dvDrag ?? 0, color: '#c07cff' }, { label: 'Steering loss', value: m.dvSteering ?? 0, color: '#ffd23f' }], { unit: 'm/s', title: 'Delta-v budget of the flight' }), 30);
       return panel(term('delta-v', 'Delta-v budget'), c);
     }
     function debrisPanel() {
