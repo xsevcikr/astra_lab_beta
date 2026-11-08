@@ -11,6 +11,7 @@ export function applyLookFx(app) {
   b.dataset.look = LOOKS.some((l) => l[0] === app.settings.look) ? app.settings.look : 'space';
   const reduce = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   b.dataset.fx = app.settings.fx === false || reduce ? 'off' : 'on';
+  b.dataset.decor = app.settings.decor ? 'on' : 'off';   // 2.8: astronaut and drifting rocks only when switched on
 }
 
 function installStars() {
@@ -65,6 +66,6 @@ export const stopRumbleNow = stopRumble;
 export function installFx(app) {
   applyLookFx(app);
   const offStars = installStars();
-  app.on('settings', (k) => { if (k === 'look' || k === 'fx') applyLookFx(app); });
+  app.on('settings', (k) => { if (k === 'look' || k === 'fx' || k === 'decor') applyLookFx(app); });
   return offStars;
 }

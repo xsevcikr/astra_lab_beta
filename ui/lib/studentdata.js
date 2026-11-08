@@ -54,7 +54,7 @@ const SVG = 'http://www.w3.org/2000/svg';
 const svg = (tag, attrs = {}) => { const e = document.createElementNS(SVG, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
 
 /** Tiny line chart (SVG). `t`/`v`: series; `setCursor(time)` moves the marker. */
-export function sparkline({ t, v, w = 150, hgt = 28, color = '#2bd9a0' }) {
+export function sparkline({ t, v, w = 150, hgt = 28, color = '#4cc6ea' }) {
   const el = svg('svg', { viewBox: `0 0 ${w} ${hgt}`, class: 'spark', preserveAspectRatio: 'none' });
   const ok = t.length > 1 && v.some(fin);
   let t0 = t[0], t1 = t[t.length - 1], lo = Infinity, hi = -Infinity;
@@ -107,7 +107,7 @@ export function drawGroundTrack(canvas, track, { cursorT = null } = {}) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2), w = canvas.clientWidth, hh = canvas.clientHeight; if (!w || !hh || !track) return;
   canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(hh * dpr);
   const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.fillStyle = '#0a100e'; g.fillRect(0, 0, w, hh);
+  g.fillStyle = '#0b111c'; g.fillRect(0, 0, w, hh);
   // unwrap the longitude so a track crossing ±180° stays continuous
   const pts = []; let prev = null, off = 0;
   for (const p of track.points) { let lon = p.lon + off; if (prev != null) { while (lon - prev > 180) { lon -= 360; off -= 360; } while (prev - lon > 180) { lon += 360; off += 360; } } pts.push({ ...p, lon }); prev = lon; }
@@ -117,11 +117,11 @@ export function drawGroundTrack(canvas, track, { cursorT = null } = {}) {
   const k = Math.min((w - 2 * pad) / (lo1 - lo0), (hh - 2 * pad) / (la1 - la0)); // px per degree, same in both axes
   const cx = (lo0 + lo1) / 2, cy = (la0 + la1) / 2;
   const X = (lon) => w / 2 + (lon - cx) * k, Y = (lat) => hh / 2 - (lat - cy) * k;
-  g.strokeStyle = '#1b2823'; g.lineWidth = 1; g.fillStyle = '#7f958c'; g.font = '10px "Segoe UI", system-ui, sans-serif';
+  g.strokeStyle = '#1a2436'; g.lineWidth = 1; g.fillStyle = '#7f958c'; g.font = '10px "Inter Variable", "Segoe UI", system-ui, sans-serif';
   const step = (la1 - la0) > 60 || (lo1 - lo0) > 120 ? 30 : (la1 - la0) > 20 || (lo1 - lo0) > 40 ? 10 : 5;
   for (let lat = Math.ceil(la0 / step) * step; lat <= la1; lat += step) { g.beginPath(); g.moveTo(0, Y(lat)); g.lineTo(w, Y(lat)); g.stroke(); g.textAlign = 'left'; g.fillText(`${lat}°`, 3, Y(lat) - 2); }
   for (let lon = Math.ceil(lo0 / step) * step; lon <= lo1; lon += step) { g.beginPath(); g.moveTo(X(lon), 0); g.lineTo(X(lon), hh); g.stroke(); const wl = ((lon + 540) % 360) - 180; g.textAlign = 'center'; g.fillText(`${wl}°`, X(lon), hh - 3); }
-  g.strokeStyle = '#2bd9a0'; g.lineWidth = 2; g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(X(p.lon), Y(p.lat)) : g.moveTo(X(p.lon), Y(p.lat)))); g.stroke();
+  g.strokeStyle = '#4cc6ea'; g.lineWidth = 2; g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(X(p.lon), Y(p.lat)) : g.moveTo(X(p.lon), Y(p.lat)))); g.stroke();
   const dot = (p, col, label) => { g.fillStyle = col; g.beginPath(); g.arc(X(p.lon), Y(p.lat), 4.5, 0, 7); g.fill(); g.fillStyle = '#e3efe9'; g.textAlign = 'left'; g.fillText(label, X(p.lon) + 7, Y(p.lat) - 6); };
   dot(pts[0], '#84e060', 'Start'); dot(pts[pts.length - 1], '#ffb84a', 'End');
   if (cursorT != null) { let best = pts[0]; for (const p of pts) if (Math.abs(p.t - cursorT) < Math.abs(best.t - cursorT)) best = p; g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.arc(X(best.lon), Y(best.lat), 6.5, 0, 7); g.stroke(); }

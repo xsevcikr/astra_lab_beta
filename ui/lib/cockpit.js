@@ -19,7 +19,7 @@ function dial(label, ticks) {
   const id = `ck-g-${uid++}`;
   let t = '';
   for (let i = 0; i <= ticks; i++) { const f = i / ticks, big = i % 2 === 0; const [x0, y0] = pt(A0 + SWEEP * f, R + 3), [x1, y1] = pt(A0 + SWEEP * f, R - (big ? 6 : 3)); t += `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${x1.toFixed(2)}" y2="${y1.toFixed(2)}" class="${big ? 'big' : ''}"/>`; }
-  const svg = sv(`<defs><linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#2bd9a0"/><stop offset="1" stop-color="#7fd7ff"/></linearGradient></defs>
+  const svg = sv(`<defs><linearGradient id="${id}" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#4cc6ea"/><stop offset="1" stop-color="#7fd7ff"/></linearGradient></defs>
     <path class="ck-track" d="${arc(0, 1)}"/><path class="ck-fill" d="${arc(0, 0.001)}" stroke="url(#${id})"/><g class="ck-ticks">${t}</g>
     <line class="ck-needle" x1="50" y1="50" x2="${pt(A0, R - 8)[0].toFixed(2)}" y2="${pt(A0, R - 8)[1].toFixed(2)}"/><circle cx="50" cy="50" r="3.2" class="ck-hub"/>`, 'ck-dial');
   const val = h('b', null, '–'), cap = h('span', null, label);

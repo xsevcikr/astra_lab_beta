@@ -7,7 +7,7 @@ import { startTour } from '../lib/tour.js';
 import { LEVELS, LEVEL_NAMES, LEVEL_HINTS } from '../../src/core/levels.js';
 import { t, LANGS } from '../../src/core/i18n.js';
 
-export const APP_VERSION = '2.7.1';
+export const APP_VERSION = '2.8.0';
 
 /** Updates (2.3): off until an update address is typed; the installed Windows app checks it, asks before downloading and before restarting. */
 function updatesPanel(app) {
@@ -65,7 +65,8 @@ export default {
 
       page.append(panel(B ? 'Look' : 'Look and motion', h('div', { class: 'col' },
         row('Colour look', select([['space', 'Deep space (dark)'], ['daylight', 'Daylight (light)'], ['contrast', 'High contrast']], st.look ?? 'space', (x) => app.setSetting('look', x), { id: 'set-look' }), 'Dark is best for the 3D views. Daylight is easier in a bright room. High contrast has white outlines.'),
-        h('label', { class: 'row' }, h('input', { type: 'checkbox', id: 'set-fx', checked: st.fx !== false, onchange: (e) => app.setSetting('fx', e.target.checked) }), 'Animations (screen glide, moving stars, T-minus countdown)'))));
+        h('label', { class: 'row' }, h('input', { type: 'checkbox', id: 'set-fx', checked: st.fx !== false, onchange: (e) => app.setSetting('fx', e.target.checked) }), 'Animations (screen glide, moving stars, T-minus countdown)'),
+        h('label', { class: 'row' }, h('input', { type: 'checkbox', id: 'set-decor', checked: !!st.decor, onchange: (e) => app.setSetting('decor', e.target.checked) }), 'Decorations (floating astronaut and space rocks behind the screens)'))));
       page.append(panel(B ? t('set.sound.b', 'Sound and help') : t('set.sound', 'Sound, help and tour'), h('div', { class: 'col' },
         h('label', { class: 'row' }, h('input', { type: 'checkbox', id: 'set-sound', checked: !!st.sound, onchange: (e) => app.setSetting('sound', e.target.checked) }), t('set.sound.play', 'Play small sound effects'), helpTip('Short beeps for liftoff and results. Off by default.')),
         h('div', { class: 'row' }, h('button', { class: 'btn', id: 'set-help', onclick: () => openHelp(app) }, t('set.quickhelp', 'Quick help')), h('button', { class: 'btn', id: 'set-progress', onclick: () => openProgress(app) }, t('set.progress', 'My progress')), h('button', { class: 'btn', id: 'tour-again', onclick: () => startTour(app, { force: true }) }, t('set.tour', 'Show the quick tour'))))));
