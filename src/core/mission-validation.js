@@ -82,7 +82,7 @@ const APOLLO_ROWS = [
   row('loiDv', 'Size of the lunar orbit insertion burn', 'loiDv', 2917 * FT, 'm/s', 0.10, 'Apollo 11 Mission Report: LOI-1 2,917 ft/s', SRC_A11),
   row('land', 'Lunar landing', 'landT', get('102:45:40'), 's', 0.10, 'Apollo 11 Mission Report: landing 102:45:40', SRC_A11),
   row('dock', 'Docking after liftoff from the Moon', 'dockT', get('128:03:00'), 's', 0.10, 'Apollo 11 Mission Report: docking 128:03:00', SRC_A11),
-  row('teiDv', 'Size of the burn home (TEI)', 'teiDv', 3283.6 * FT, 'm/s', 0.10, 'Apollo 11 Mission Report: TEI 3,283.6 ft/s. The simulator plans the published 59.9 h trip home and works out the burn itself.', SRC_A11),
+  row('teiDv', 'Size of the burn home (TEI)', 'teiDv', 3283.6 * FT, 'm/s', 0.10, 'Apollo 11 Mission Report: TEI 3,283.6 ft/s. Since 2.7 the simulator plans a 70 h trip home (59.9 h needs about 15 % more at its launch date), so this is not the same burn.', SRC_A11),
   row('ei', 'Back at the top of Earth\'s atmosphere (entry interface)', 'entryT', get('195:03:06'), 's', 0.10, 'Apollo 11 Mission Report: entry interface 195:03:06', SRC_A11),
   row('splash', 'Entry interface to splashdown', 'entryToSplash', get('195:18:35') - get('195:03:06'), 's', 0.10, 'Apollo 11 Mission Report: splashdown 195:18:35, 15.5 minutes after entry interface. The simulator flies a lifting entry with parachutes (ASSUMED capsule lift-to-drag 0.34 and a simple bank law).', SRC_A11),
   row('entryG', 'Highest push on the crew during entry', 'entryPeakG', 6.5, 'g', 0.15, 'Apollo 11 entry: about 6.5 g (Apollo 11 Mission Report, entry flight data). The bank law here is a simple stand-in for the real guidance.', SRC_A11),
