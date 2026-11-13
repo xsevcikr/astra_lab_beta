@@ -26,7 +26,7 @@ The authoritative physics lives in `physics/` and is completely independent of r
 | Power / thermal / comms | Solar generation with cylindrical-shadow eclipses and panel deployment; battery energy; radiator/heater/MLI thermal balance (`Q_in = εσAT⁴`); link budget with antenna gain, range and ground-station elevation. |
 | Rover | DC-motor torque–speed with power cap, Coulomb traction with cohesion, rolling resistance, slope gravity, slip, rollover margin, battery use; procedural deterministic terrain. |
 | Landing | Contact detection against terrain, touchdown speed/tilt limits from the leg rating, tip-over; a deployed rover lands with the lander. |
-| Orbits | State ↔ elements, universal-variable Kepler propagation, patched-conic **sphere-of-influence** transitions (Laplace radii), Keplerian ephemerides for Earth, Moon, Mars. |
+| Orbits | State ↔ elements, universal-variable Kepler propagation, patched-conic **sphere-of-influence** transitions (Laplace radii), JPL DE440 ephemerides for Earth, Moon, Mars (1950-2100, bundled offline; Kepler elements outside), UTC/TAI/TT/TDB/UT1 time scales. See TIME-AND-EPHEMERIS.md. |
 
 ## Validation (all in `tests/physics.test.js` and `tests/missions.test.js`)
 
