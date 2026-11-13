@@ -3,7 +3,7 @@ import { parseSounding, describeSounding } from '../../src/core/sounding.js';
 import { icon } from '../lib/icons.js';
 import { h, clear, toast, modal, fmt, confirmDialog } from '../lib/dom.js';
 import { panel, kv, select, numberInput, stat, emptyState, statusBadge, pickFile } from '../lib/widgets.js';
-import { parseOPM } from '../../src/core/ccsds.js';
+import { parseOrbitState } from '../../src/core/ccsds.js';
 import { LAUNCH_SITES, listBodies } from '../../physics/bodies.js';
 import { CONDITION_TYPES, ACTION_TYPES } from '../../physics/mission-exec.js';
 import { gloss } from '../lib/glossary.js';
@@ -169,9 +169,9 @@ export default {
         h('div', { class: 'muted', style: { fontSize: '11.5px' } }, 'Sites are labelled Real (Cape Canaveral, Kourou) or Fictional (generic sites). Atmosphere models: Earth, Mars (simplified standard models).'),
         weatherEditor(env),
         h('div', { class: 'col', id: 'opm-editor', style: { marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--line)' } },
-          h('b', null, 'Start from a published orbit (CCSDS OPM file)'),
-          h('div', { class: 'muted', style: { fontSize: '12px' } }, 'Open an Orbit Parameter Message from other space software: the flight then starts in that orbit at that time instead of on the pad. Only the position and velocity are used.'),
-          h('div', { class: 'row' }, h('button', { class: 'btn small', id: 'opm-import', onclick: importOpm }, 'Open an OPM file…'))));
+          h('b', null, 'Start from a published orbit (CCSDS OPM or OMM file)'),
+          h('div', { class: 'muted', style: { fontSize: '12px' } }, 'Open an Orbit Parameter Message (a state vector or Keplerian elements) or an Orbit Mean-Elements Message (the KVN, XML or JSON that satellite catalogues publish): the flight then starts in that orbit at that time instead of on the pad. Only the position and velocity are used; OMM mean elements are turned into a two-body state, so expect tens of km of difference from SGP4.'),
+          h('div', { class: 'row' }, h('button', { class: 'btn small', id: 'opm-import', onclick: importOpm }, 'Open an OPM or OMM file…'))));
     }
     async function importSounding() {
       try {
@@ -182,11 +182,11 @@ export default {
     }
     async function importOpm() {
       try {
-        const f = await pickFile('.opm,.txt'); if (!f) return;
-        const o = parseOPM(f.text), m = P().mission; if (!m) { toast('Create or open a mission first.', 'bad'); return; }
+        const f = await pickFile('.opm,.omm,.xml,.json,.txt'); if (!f) return;
+        const o = parseOrbitState(f.text), m = P().mission; if (!m) { toast('Create or open a mission first.', 'bad'); return; }
         const body = ({ EARTH: 'earth', MOON: 'moon', MARS: 'mars' })[o.center]; if (!body) throw new Error(`The central body ${o.center} is not available here (Earth, Moon and Mars are).`);
         P().environment.body = body; P().environment.epoch = o.epoch; m.initial = { type: 'state', r: o.r, v: o.v, body, attitude: 'prograde' };
-        commit('Start from an OPM state'); toast(`The flight now starts from ${o.object}'s state at a distance of ${Math.round(Math.hypot(...o.r) / 1000)} km from the centre of ${body}.`, 'ok', 9000);
+        commit(o.kind === 'omm' ? 'Start from an OMM orbit' : 'Start from an OPM state'); toast(`The flight now starts from ${o.object}'s state at a distance of ${Math.round(Math.hypot(...o.r) / 1000)} km from the centre of ${body}.${o.warning ? ` ${o.warning}` : ''}`, 'ok', 11000);
       } catch (e) { toast(`Could not use the file: ${e.message}`, 'bad', 9000); }
     }
     // 2.1: weather and precise gravity for every flight of this project (all off by default)

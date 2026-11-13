@@ -124,12 +124,17 @@ function registerIpc() {
     await atomicWrite(r.filePath, Buffer.from(bytes));
     return { path: r.filePath };
   });
-  ipcMain.handle('file:open', async (e, accept) => {
+  ipcMain.handle('file:open', async (e, accept, opts) => {
     const win = BrowserWindow.fromWebContents(e.sender);
-    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'ASTRA LAB files', extensions: ['json'] }] });
+    // accept is the same list the web file picker takes (".oem,.txt"); before 2.9 the desktop dialog only ever offered .json files
+    const exts = String(accept ?? '.json').split(',').map((x) => x.trim().replace(/^\./, '')).filter((x) => /^[\w-]{1,10}$/.test(x));
+    const filters = [{ name: 'Accepted files', extensions: exts.length ? exts : ['json'] }, { name: 'All files', extensions: ['*'] }];
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters });
     if (r.canceled || !r.filePaths[0]) return null;
     const st = await fsp.stat(r.filePaths[0]); if (st.size > 200 * 1024 * 1024) throw new Error('File too large');
-    return { name: path.basename(r.filePaths[0]), text: await fsp.readFile(r.filePaths[0], 'utf8') };
+    const name = path.basename(r.filePaths[0]);
+    if (opts && opts.binary) return { name, bytes: new Uint8Array(await fsp.readFile(r.filePaths[0])) };
+    return { name, text: await fsp.readFile(r.filePaths[0], 'utf8') };
   });
   ipcMain.handle('print:html', async (_e, html) => {
     const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, javascript: false } });
