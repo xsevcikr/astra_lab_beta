@@ -133,3 +133,7 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 * Precise gravity (J2, J3, J4) and the optional Sun and Moon pull (`settings.thirdBody`) are off by default. Third-body positions are held constant within a step. No higher harmonics, tides, solar radiation pressure or relativity.
 * Pitch damping uses the same normal-force slope and centre of pressure as the static model. The body centre of pressure is still mid-length (a move to the nose broke validated launchers); a per-vehicle aero database is needed.
 * The stored Apollo plan launches with the Sun 40 deg below the horizon (night): of the launch days within 60 days that reach the Moon with a 3-day trip, the only ones the course-correction solver can aim at the lunar equator are at night (or give a 63 h trip, which fails the 10% Mission Report check). The trip home is planned for 70 h (Apollo 11: 59.9 h) because the real Moon geometry at the planned date makes the 59.9 h trip cost about 1,150 m/s.
+
+## Optimiser (added with the Optimiser screen)
+See `documentation/OPTIMISATION.md`: the launch-path search is local and tunes only the `ascent` guidance law; transfer
+burns are impulsive; staging uses the ideal rocket equation with constant structure ratios and ignores thrust-to-weight.
