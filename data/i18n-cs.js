@@ -15,6 +15,7 @@ export const CS = {
   'nav.telemetry.plain': 'Data z letu', 'nav.telemetry.full': 'Telemetrie',
   'nav.replay.plain': 'Přehrání', 'nav.replay.full': 'Přehrání',
   'nav.experiments.plain': 'Pokusy', 'nav.experiments.full': 'Laboratoř pokusů',
+  'nav.optimize.plain': 'Vylepši to', 'nav.optimize.full': 'Optimalizace',
   'nav.projects.plain': 'Moje projekty', 'nav.projects.full': 'Projekty',
   'nav.validation.plain': 'Sedí to se skutečnými raketami?', 'nav.validation.full': 'Ověření modelu',
   'nav.settings.plain': 'Nastavení', 'nav.settings.full': 'Nastavení',
