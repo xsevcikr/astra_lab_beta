@@ -478,16 +478,23 @@ export const VALIDATION_VEHICLES = [
   },
   {
     id: 'atlas-v-551', name: 'Atlas V 551', short: 'Atlas V', build: buildAtlasV551, rows: ATLAS_ROWS,
-    flight: { altitude: 185e3, insertion: 'direct', kickAngle: 2, kickAlt: 150, insertionAlt: 90000, stageDelays: { stage2: 3 }, maxTime: 1500, site: 'cape',
+    flight: { altitude: 185e3, insertion: 'direct', kickAngle: 2, kickAlt: 150, insertionAlt: 90000, stageDelays: { stage2: 3 }, maxTime: 7200, site: 'cape',
       pitch: [[0,90],[10,90],[20,70],[40,52.3],[60,41.3],[80,35],[100,32],[120,30],[150,30],[180,29.5],[230,28]],
       extraEvents(mission) {   // strap-on solid boosters: lit with the core, jettisoned when they burn out
         mission.events.push({ id: 'bign', name: 'Solid boosters ignition', condition: { type: 'time', value: 0 }, action: { type: 'IGNITE', group: 'booster' }, status: 'pending' });
         mission.events.push({ id: 'bsep', name: 'Solid boosters burn out and separate', condition: { type: 'propellant', group: 'booster', op: '<=', value: 0.004 }, action: { type: 'SEPARATE', group: 'booster' }, status: 'pending' });
 
         // a stored pitch table while the core burns, closed-loop steering from the Centaur on (as on the real vehicle)
-        mission.events.push({ id: 'closedloop', name: 'Closed-loop steering to orbit', condition: { type: 'event', id: 'ign2' }, action: { type: 'SET_GUIDANCE', mode: 'insertion', params: { targetAlt: 185e3, azimuth: mission.meta.azimuth, holdUntilAccel: 0.3, pitchRate: 3 } }, status: 'pending' });
+        // 2.9 TWO-BURN CENTAUR: burn 1 flies explicit guidance (reach 185 km with zero vertical speed; physics/guidance.js) into a 160 x 185 km
+        // parking orbit, the stage coasts once around the Earth and burn 2 circularises at the high point. Before 2.9 the Centaur burned once
+        // and the old altitude-hold law left a 182 x 427 km orbit.
+        mission.events.push({ id: 'closedloop', name: 'Closed-loop steering to orbit (Centaur burn 1)', condition: { type: 'event', id: 'ign2' }, action: { type: 'SET_GUIDANCE', mode: 'insertion', params: { targetAlt: 185e3, azimuth: mission.meta.azimuth, holdUntilAccel: 0.3, pitchRate: 3, explicit: true, minSinPitch: -0.2 } }, status: 'pending' });
+        const cut = mission.events.find((e) => e.id === 'cutoff');
+        if (cut) { cut.name = 'Centaur first cutoff (MECO-1, parking orbit)'; cut.condition = { type: 'all', conditions: [{ type: 'event', id: 'ign2' }, { type: 'periapsis', op: '>=', value: 160e3 }] }; }
+        mission.events.push({ id: 'circ', name: 'Centaur second burn (circularise at the high point)', condition: { type: 'all', conditions: [{ type: 'event', id: 'cutoff', delay: 60 }, { type: 'timeToApoapsis', op: '<=', value: 'halfBurn', burnGroup: 'stage2' }] },
+          action: { type: 'BURN', group: 'stage2', direction: 'prograde', until: { type: 'periapsis', op: '>=', value: 185e3 * 0.985 } }, status: 'pending' });
       } },
-    pitchLabel: 'Pitch table for the first 230 s FITTED so that the published 551 payload reaches orbit (not published data); closed-loop steering from the Centaur on.',
+    pitchLabel: 'Pitch table for the first 230 s FITTED so that the published 551 payload reaches orbit (not published data); closed-loop explicit steering from the Centaur on, two Centaur burns (2.9).',
     summary: 'Two-stage kerolox/hydrolox rocket with five solid strap-on boosters (551 configuration).',
     assumptions: [
       'Only masses, thrust, Isp and burn times from the Atlas V page are used. That page gives NO trajectory timeline for the 551, so there are no Max-Q or staging-altitude rows.',
@@ -495,7 +502,7 @@ export const VALIDATION_VEHICLES = [
       'Fairing mass (4,000 kg) is an ESTIMATE; the page does not give it. The LEO reference orbit is not stated; 185 km circular is assumed.',
       ...COMMON_ASSUMPTIONS,
     ],
-    simplified: ['Boosters burn at constant average thrust (the real motor has a thrust peak and a long tail-off).', 'The RD-180 throttles to 82% after 115 s (tuned so the core burns for the published 253 s; the real throttle history is not on the page).', ...COMMON_SIMPLIFIED],
+    simplified: ['Boosters burn at constant average thrust (the real motor has a thrust peak and a long tail-off).', 'The RD-180 throttles to 82% after 115 s (tuned so the core burns for the published 253 s; the real throttle history is not on the page).', 'The Centaur parking orbit (160 x 185 km) and the one-orbit coast are a choice of this model; the page gives no Centaur timeline.', ...COMMON_SIMPLIFIED],
     dataSource: 'estimated',
   },
   {

@@ -77,7 +77,7 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 ## Apollo 11 Moon rocket (1.9)
 * The transposition/docking after TLI and the final docking in lunar orbit are scripted sequences that the 3D view plays back; physics keeps one rigid vehicle during them. The CSM is a passive companion while the LM flies. The replay screen does not play these sequences.
 * Planning uses patched conics. The crew is mass only. Apollo-class masses, thrusts and the water-sublimator thermal model (lumped) are Estimated, not Real.
-* Splashdown is simulated since 2.3 (service module drop, lifting entry, drogue and main parachutes, splashdown at 3 to 12 m/s). The bank law has no sideways targeting, so the landing point is not steered; the heat shield is one lump (no ablation). The trip home takes about 52 h with a 1146 m/s TEI (Apollo: about 59 h).
+* Splashdown is simulated since 2.3 (service module drop, lifting entry, drogue and main parachutes, splashdown at 3 to 12 m/s). The bank law has no sideways targeting, so the landing point is not steered; the heat shield is one lump (since 2.9 its ablation and recession are computed at the stagnation point only). The trip home takes about 52 h with a 1146 m/s TEI (Apollo: about 59 h).
 * The launch time comes from the planner and is at about dawn (sun -6 deg at the pad), not Apollo's date. The adapter is drawn see-through. Verified in headless Chromium, not in a real Electron window.
 
 ## Added in 2.0
@@ -97,9 +97,9 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 
 
 ## Added in 2.3
-* Slosh and flex are optional reduced-order models (first slosh mode per tank, one bending mode). They are off by default. No second slosh mode, no pogo, no higher bending modes.
+* Slosh and flex are optional reduced-order models (first slosh mode per tank, one bending mode). They are off by default. No higher bending modes. Pogo (2.9) is a two-oscillator model that reports the shaking but does not feed it back into the trajectory.
 * Saturn V validation: since the follow-up to 2.3 the S-IC centre engine is shut down at 135 s and a fitted pitch table (0 to 165 s) plus closed-loop steering reproduce Max-Q time and speed and the S-IC cutoff. The Max-Q altitude was 16% low until 2.4: the cause was the standard atmosphere, and a warm Florida day (tropical atmosphere) fixes it. The launch day's real sounding is not used.
-* Atlas V 551, Ariane 5 ECA and New Shepard were added to Validation. They have few published trajectory numbers, so most rows check the build and the burn times. Atlas V: the core burn matches since 2.4 (the RD-180 throttles back, a tuned value) but the single-burn orbit overshoots its high point (about 182 x 427 km); the real Centaur burns twice. Ariane 5: GTO payload flown to a 200 km orbit only. New Shepard: Isp, propellant and dry mass are not published and were assumed; apogee is 59% too high. All of this is listed in VALIDATION.md.
+* Atlas V 551, Ariane 5 ECA and New Shepard were added to Validation. They have few published trajectory numbers, so most rows check the build and the burn times. Atlas V: the core burn matches since 2.4 (the RD-180 throttles back, a tuned value); since 2.9 the Centaur burns twice (parking orbit, coast, circularisation) and ends at about 182 x 193 km. Ariane 5: GTO payload flown to a 200 km orbit only. New Shepard: Isp, propellant and dry mass are not published and were assumed; apogee is 59% too high. All of this is listed in VALIDATION.md.
 * Correlated Monte Carlo uses Gaussian links between inputs; contradicting links are refused.
 * CCSDS OEM/OPM and SPICE-text exchange use a simplified EME2000 frame; it is not a binary SPK kernel.
 * Auto-update: tested with the real `electron-updater` against a local mock server on Linux (check, download, sha512 check, tampered file refused) and through the app's own IPC wrapper. NOT tested: the Windows installer, the restart-and-install step, a real internet server. The installer is not code-signed. See UPDATES.md.
@@ -116,9 +116,9 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 * Real weather: a balloon sounding replaces the standard atmosphere (temperature) and the simple wind. Pressure comes from the temperature profile by hydrostatic balance, so the ground pressure is the first level's when given. Above the file's top (30 km at most) the standard atmosphere is blended in. Turbulence is a simple gust on top of the measured wind; a sounding is one profile at one time and place, not the wind the rocket actually meets.
 * Second slosh mode: classic cylindrical-tank formulas, but no coupling between tanks and no ring baffles other than the damping value.
 * Mission-assurance review: the table of validated launchers is the state when the version was built (re-run `node scripts/update-validation-summary.mjs` after physics changes).
-* Vega does not reach its published orbit in the model; PSLV-XL and Atlas V reach their low point but not a circular orbit (single burn). New Shepard's top speed is 31% high and its throttle value is tuned. Electron has 4 of 8 rows within band.
+* Vega does not reach its published orbit in the model; PSLV-XL reaches its low point but not a circular orbit (single burn); Atlas V is circular since 2.9 (two Centaur burns). New Shepard's top speed is 31% high and its throttle value is tuned. Electron has 4 of 8 rows within band.
 * Planet maps: Mars, the outer planets and the Moon are unchanged (no source of better maps could be reached from the build machine); only Earth got sharper maps and real clouds (2.4), which now drift.
-* Nose heating is the existing stagnation-point model; fin leading edges and pogo are not modelled.
+* 2.9: radiative entry heating (Tauber-Sutton), ablation, fin leading-edge heating, pogo and a sampled flight computer are optional switches (Planner). All are engineering correlations or reduced-order models: heating is good to about a factor of 2, the fin model is one lumped edge per fin set, pogo has one structural and one feed-line mode, and the flight computer navigates attitude only (guidance still reads the true position and velocity).
 
 ## Added in 2.6
 - Livery is bands and patterns only; no lettering or logos.
