@@ -94,11 +94,12 @@ export async function saveFile(app, name, data, mime = 'application/octet-stream
     toast(`Downloaded ${name}`, 'ok'); return name;
   } catch (e) { toast(`Could not save ${name}: ${e.message}`, 'bad'); return null; }
 }
-export function pickFile(accept = '.json') {
-  if (globalThis.astra?.openFile) return globalThis.astra.openFile(accept);
+/** Ask for a file. {binary: true} returns {name, bytes: Uint8Array} instead of {name, text}. */
+export function pickFile(accept = '.json', { binary = false } = {}) {
+  if (globalThis.astra?.openFile) return globalThis.astra.openFile(accept, binary ? { binary: true } : undefined);
   return new Promise((resolve) => {
     const inp = h('input', { type: 'file', accept, style: { display: 'none' } });
-    inp.addEventListener('change', async () => { const f = inp.files[0]; inp.remove(); resolve(f ? { name: f.name, text: await f.text() } : null); });
+    inp.addEventListener('change', async () => { const f = inp.files[0]; inp.remove(); resolve(f ? (binary ? { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) } : { name: f.name, text: await f.text() }) : null); });
     document.body.append(inp); inp.click();
   });
 }

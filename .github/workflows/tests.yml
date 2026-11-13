@@ -1,15 +1,36 @@
 name: Tests
-# Runs on every push and every pull request: all unit and physics tests (Linux and Windows) and the browser UI suites (headless Chromium).
+# Runs on every push and every pull request:
+#  1. static checks (every file parses, JSON valid, no focused tests, every suite wired into its runner, version consistent) - seconds;
+#  2. all unit, physics, validation and mission tests on Linux and Windows (Node 18 and 22), with a JUnit report and line coverage;
+#  3. the physics regression check: every validation flight, Apollo 11 and the workbench scenarios against the approved baseline;
+#  4. the browser UI suites (headless Chromium);
+#  5. the Electron app starts on Windows Server 2022 and 2025.
+# Each job writes a short summary on the run page. Make "Static checks", "Unit and physics tests", "Physics regression" and
+# "Browser UI suites" required status checks in the branch protection of main so nothing merges red.
 on:
   push:
   pull_request:
   workflow_dispatch:
+permissions:
+  contents: read
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax, JSON, focused tests, suite wiring, version
+        run: node scripts/ci-checks.mjs
   unit:
     name: Unit and physics tests (${{ matrix.os }}, Node ${{ matrix.node }})
+    needs: checks
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     strategy:
@@ -27,11 +48,54 @@ jobs:
           node-version: ${{ matrix.node }}
       # the tests need no packages (plain Node ESM); Electron is only needed to build the installer
       - name: Unit, physics, validation and mission tests
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.node == 22) }}
         run: npm test
+      # one leg also writes a JUnit report and line coverage (Node 22 test runner) and summarises them on the run page
+      - name: Unit, physics, validation and mission tests (with JUnit report and coverage)
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node == 22 }}
+        run: >-
+          mkdir -p test-results &&
+          node scripts/run-tests.mjs --experimental-test-coverage
+          "--test-coverage-include=src/**" "--test-coverage-include=physics/**" "--test-coverage-include=mission/**" "--test-coverage-include=ai/**" "--test-coverage-include=data/**"
+          --test-reporter=spec --test-reporter-destination=stdout
+          --test-reporter=junit --test-reporter-destination=test-results/junit.xml
+          --test-reporter=lcov --test-reporter-destination=test-results/lcov.info
+      - name: Test summary
+        if: ${{ always() && matrix.os == 'ubuntu-latest' && matrix.node == 22 }}
+        run: node scripts/test-summary.mjs test-results/junit.xml test-results/lcov.info >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test report
+        if: ${{ always() && matrix.os == 'ubuntu-latest' && matrix.node == 22 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: test-results/
+          if-no-files-found: ignore
+  regression:
+    name: Physics regression (validation flights, Apollo 11, workbench)
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # fails when any simulated number moves beyond tolerance from tests/regression/baseline.json;
+      # an intended physics change re-approves it in the same pull request: node scripts/regression-check.mjs --update
+      - name: Compare every simulated value with the approved baseline
+        run: node scripts/regression-check.mjs --report regression-report.json --summary "$GITHUB_STEP_SUMMARY"
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: regression-report.json
+          if-no-files-found: ignore
   ui:
     name: Browser UI suites (headless Chromium)
+    needs: checks
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

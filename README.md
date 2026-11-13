@@ -10,6 +10,7 @@ No account, no cloud and no internet connection are needed. An optional online A
 - Missions run to the end: Apollo comes home with a lifting entry, parachutes and splashdown.
 - A simple first page with a turning 3D Earth and big portals; the Explore Beyond look on every screen.
 - Thrust curves, optional slosh and flex, linked Monte Carlo inputs, CCSDS/SPICE import and export, and an opt-in update check (Settings > Updates).
+- Trajectory exchange with mission tools: binary SPICE SPK kernels, CCSDS OEM (text and XML), OPM and OMM (documentation/DATA-EXCHANGE.md); requirements traceability with ReqIF export (documentation/TRACEABILITY.md); CI with a physics regression baseline (documentation/CI.md).
 
 ## New in 2.1 (scientist tools, found and fixed mistakes)
 - **Weather:** Mission Planner > Environment now has wind (speed, direction, gusts, seed) and air density. The wind is a jet-stream profile, strongest at 12 km, and the same seed always gives the same flight.
