@@ -94,7 +94,7 @@ test('Atlas V 551: boosters burn out on time and the published payload reaches o
   const row = (id) => r.rows.find((x) => x.id === id);
   assert.equal(row('boosterBurn').status, 'pass'); assert.equal(row('reachedOrbit').status, 'pass');
   assert.equal(row('s1Burn').status, 'pass', 'with the throttle-back the core burns for the published 253 s');
-  assert.ok(r.metrics.orbitApo > 250000, 'the single-burn flight still overshoots its apogee (the real Centaur burns twice); the page says so');
+  assert.ok(r.metrics.orbitApo < 203.5e3, '2.9: the Centaur burns twice (parking orbit, coast, circularisation), so the apogee no longer overshoots');
 });
 
 test('Ariane 5 ECA: reaches the 200 km parking orbit with the published GTO payload and matches both burn times', () => {

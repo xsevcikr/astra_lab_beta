@@ -29,6 +29,9 @@ export const DEFAULT_PROJECT_SETTINGS = {
   slosh: false,                 // 2.3: propellant slosh
   slosh2: false,                // 2.5: second slosh mode
   flex: false,                  // 2.3: structural bending
+  heating: false,               // 2.9: radiative entry heating, heat-shield ablation and fin heating as failures
+  pogo: false,                  // 2.9: pogo oscillation of liquid stages
+  gnc: false,                   // 2.9: discrete flight computer with IMU drift and a gimbal servo
   recordMax: 20000,
   educationalMode: false,
   showDataLabels: true,
@@ -198,7 +201,7 @@ export function buildRunRecord(sim, { name, runId } = {}) {
   const r = sim.result;
   const rec = {
     schema: 'astra.run/1', id, name: name ?? `${sim.vehicleDef.name} — ${sim.mission.name}`, created: new Date().toISOString(),
-    engine: { name: 'astra-physics', version: '1.0', integrator: 'RK4', deterministic: true, appVersion: APP_MODEL_VERSION, gravity: sim.settings?.j2 ? 'point mass + J2' : 'point mass', slosh: !!sim.settings?.slosh, flex: !!sim.settings?.flex, weather: !!(sim.env?.wind?.speed || (sim.env?.densityScale && sim.env.densityScale !== 1)) },
+    engine: { name: 'astra-physics', version: '1.0', integrator: 'RK4', deterministic: true, appVersion: APP_MODEL_VERSION, gravity: sim.settings?.j2 ? 'point mass + J2' : 'point mass', slosh: !!sim.settings?.slosh, flex: !!sim.settings?.flex, heating: !!sim.settings?.heating, pogo: !!sim.settings?.pogo, gnc: !!sim.settings?.gnc, weather: !!(sim.env?.wind?.speed || (sim.env?.densityScale && sim.env.densityScale !== 1)) },
     vehicle: sim.vehicleDef, mission: sim.mission, environment: sim.env, settings: sim.settings,
     commands: sim.commands ?? [],
     result: r ? { status: r.status, reason: r.reason, endTime: r.endTime, objective: r.objective, failures: r.failures, warnings: r.warnings, summary: r.summary } : null,

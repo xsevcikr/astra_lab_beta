@@ -24,6 +24,9 @@ import { TelemetryRecorder } from './telemetry.js';
 import { FailureMonitor, assessFailures, CONFIDENCE } from './failures.js';
 import { RoverDynamics } from './rover.js';
 import { makeDebris, DebrisTrack } from './debris.js';
+import { HeatingModel, radiativeHeatFlux } from './heating.js';
+import { PogoModel } from './pogo.js';
+import { FlightController, GNC_DEFAULTS } from './gnc.js';
 
 const DEG = Math.PI / 180;
 function makeRngLocal(seed) { let a = (seed >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -40,6 +43,10 @@ export const DEFAULT_SETTINGS = {
   slosh: false,                   // 2.3: propellant slosh (spring-mass model per partly filled tank)
   slosh2: false,                  // 2.5: second slosh mode per tank (needs slosh)
   flex: false,                    // 2.3: first bending mode of the structure and the bent-sensor error
+  heating: false,                 // 2.9: radiative entry heating heats the nose, heat-shield burn-through and fin over-temperature are failures (physics/heating.js)
+  pogo: false,                    // 2.9: structure / feed-line pogo oscillation of liquid stages (physics/pogo.js)
+  gnc: false,                     // 2.9: discrete flight computer, IMU drift, gimbal servo, loop margins (physics/gnc.js)
+  ...GNC_DEFAULTS,
 };
 
 export class Simulation {
@@ -99,6 +106,9 @@ export class Simulation {
     this.attachRover();
     this.executor = new MissionExecutor(this, this.mission);
     this.monitor = new FailureMonitor(this);
+    this.heating = new HeatingModel(this);
+    this.pogo = new PogoModel(this);
+    this.fc = this.settings.gnc ? new FlightController(this) : null;
     this.setGuidance(this.mission.guidance?.mode ?? 'none', this.mission.guidance?.params ?? {});
     this._geometry();
     this.fv.refreshMass();
@@ -401,7 +411,9 @@ export class Simulation {
       Tg = Math.max(c.TgVac - pf * c.TgLoss, 0); Tf = Math.max(c.TfVac - pf * c.TfLoss, 0);
       // attitude control law (PD on pointing error in body frame)
       let tcy = 0, tcz = 0, tcx = 0;
-      if (c.controlDir) {
+      const G = c.gnc;   // 2.9 discrete flight computer: torques and gimbal angles were set at the start of the step (physics/gnc.js)
+      if (G) { attErr = G.attErr; }
+      else if (c.controlDir) {
         const cb = qRotate(qConj(q), c.controlDir); // desired direction in body frame
         if (c.sensY || c.sensZ) { cb[1] += c.sensY; cb[2] += c.sensZ; }   // bent structure: the sensor sees a slightly wrong attitude (settings.flex)
         dirB = cb;
@@ -417,7 +429,9 @@ export class Simulation {
         tcx = -c.Iax * Kd * 0.5 * w[0]; // roll damping
       }
       // gimbal torque (thrust vectoring): tau_y = -dx*Tz, tau_z = dx*Ty  (dx = x_gimbal - x_cg < 0)
-      if (Tg > 1 && c.dxg < -1e-3 && c.controlDir) {
+      if (G) {
+        if (Tg > 1 && c.dxg < -1e-3 && c.controlDir) { ty = Tg * Math.sin(G.dy); tz = Tg * Math.sin(G.dz); gimbalAngle = Math.asin(clamp(Math.hypot(ty, tz) / Math.max(Tg, 1e-9), 0, 1)); }
+      } else if (Tg > 1 && c.dxg < -1e-3 && c.controlDir) {
         let Ty = tcz / c.dxg, Tz = -tcy / c.dxg;
         const lim = Tg * c.sinGimbal, mag = Math.hypot(Ty, Tz);
         if (mag > lim) { const s = lim / mag; Ty *= s; Tz *= s; }
@@ -429,6 +443,7 @@ export class Simulation {
       // auxiliary (RCS / reaction wheels) supply the remainder up to their authority
       let remY = tcy - tgY, remZ = tcz - tgZ;
       const auth = c.auxAuthority;
+      if (G) { remY = G.auxY; remZ = G.auxZ; tcx = G.tx; }
       const mg = Math.hypot(remY, remZ);
       if (mg > auth) { const s = auth / Math.max(mg, 1e-12); remY *= s; remZ *= s; }
       if (!c.controlDir) { remY = 0; remZ = 0; }
@@ -759,7 +774,7 @@ export class Simulation {
       surfacePoint: (lat, lon, tt, hh) => surfacePointInertial(P.id, lat, lon, this.env.epoch + tt, P.radius + hh),
       latLon: (rr, tt) => latLonFromInertial(P.id, rr, this.env.epoch + tt), terrainAt: (lat, lon) => this._terrainAlt(lat, lon),
       target: (this.companion && this.companion.track.body.id === P.id) ? this.companion.track.stateAt(this.t) : null,
-      dragAccel: (info.drag ?? 0) / fv.mass, liftToDrag: this.geom?.liftToDrag ?? 0, minThrottle: Math.max(...gEngines.map((e) => e.comp.minThrottle ?? 0), 0), thrustAccel: (info.thrust ?? 0) > 0 ? info.thrust / fv.mass : thrustMax / fv.mass,
+      dragAccel: (info.drag ?? 0) / fv.mass, liftToDrag: this.geom?.liftToDrag ?? 0, minThrottle: Math.max(...gEngines.map((e) => e.comp.minThrottle ?? 0), 0), thrustAccel: (info.thrust ?? 0) > 0 ? info.thrust / fv.mass : thrustMax / fv.mass, exhaustVelocity: (this.lastIspVac ?? 0) * G0,
     };
     const gout = guidanceStep(this.guidance, gctx);
     this.guidanceInfo = gout.info ?? null;
@@ -787,6 +802,7 @@ export class Simulation {
     const ctx = this._buildContext(dt, dirCmd);
     this._ctx = ctx;
     if (this.settings.slosh || this.settings.flex) this._applySloshFlex(ctx, dt);
+    if (this.fc) this.fc.update(ctx, dt);   // 2.9: the flight computer samples, the gimbal servo moves (settings.gnc)
     const mdotTot = ctx.mdot;
     const m0 = ctx.m0;
     const tauRcsBefore = { rcs: 0, wheel: 0 };
@@ -943,6 +959,7 @@ export class Simulation {
     }
     // topical subsystems
     this._environmentForSubsystems(dt);
+    if (!this.onGround) { this.heating.update(dt); this.pogo.update(dt); }   // 2.9 heating diagnostics; pogo (settings.pogo)
     updateInstruments(fv, dt);
     // check chutes
     this._chuteLoads();
@@ -955,7 +972,8 @@ export class Simulation {
     if (fv.commState.link) this.commStats.linkTime += dt;
     this.commStats.bestMargin = Math.max(this.commStats.bestMargin, fv.commState.margin);
     if (!fv.commState.link) this.commStats.reason = fv.commState.reason;
-    const destroyed = this.monitor.check(dt) ?? (this.rover ? this.monitor.checkRover(dt) : null);
+    this.pogo.check(dt);
+    const destroyed = this.monitor.check(dt) ?? this.heating.check() ?? (this.rover ? this.monitor.checkRover(dt) : null);
     this._record(false);
     if (destroyed) { this.crashed = true; this._finish('FAILURE', destroyed); return; }
     this._checkEnd();
@@ -1007,7 +1025,7 @@ export class Simulation {
     const dense = (o.rho ?? 0) > 1e-3;
     const env = {
       q, sunDir, solarFlux: flux, sunlit, inAtmosphere: (o.rho ?? 0) > 1e-6,
-      heatFlux: o.rho > 0 ? stagnationHeatFlux(heatingConstant(P.id), o.rho, fv.thermal.lead.noseRadius || 0.2, o.speedAir) : 0,
+      heatFlux: o.rho > 0 ? stagnationHeatFlux(heatingConstant(P.id), o.rho, fv.thermal.lead.noseRadius || 0.2, o.speedAir) + (this.settings.heating ? radiativeHeatFlux(P.id, o.rho, fv.thermal.lead.noseRadius || 0.2, o.speedAir) : 0) : 0,   // 2.9: + shock-layer radiation (settings.heating)
       speed: o.speedAir, ambientT: dense ? o.Tamb : 3, surfaceT: dense ? o.Tamb : 3,
       convectionW: dense ? 12 * Math.min(o.rho, 1.2) * Math.max(ar, 0.1) * (this.landed ? 1 : 0.3) : 0,
       planetIR, albedoFlux, internalPower: fv.powerState.consumption * 0.9,
@@ -1251,6 +1269,8 @@ export class Simulation {
     n.energy = el.energy; n.hmom = el.h; n.tta = el.e < 1 ? el.tApo : NaN; n.ttp = el.e < 1 ? el.tPeri : el.tPeri;
     n.tempLead = fv.thermal.lead.T; n.tempBody = fv.thermal.body.T; n.heatFlux = this._env?.heatFlux ?? 0;
     n.thermRatio = fv.thermal.maxRatio;
+    { const H = this.heating?.out; n.heatRad = H?.qRad ?? 0; n.heatLoad = H?.heatLoad ?? 0; n.finTemp = H?.finT ?? 0; n.recession = H?.recession ?? 0; n.pogoG = this.pogo?.out.gAmp ?? 0; }
+    n.gimbalCmdErr = (this.fc?.out.lag ?? 0) / DEG;
     n.powerGen = fv.powerState.generation; n.powerUse = fv.powerState.consumption; n.battery = fv.batteryWh; n.batteryFrac = fv.powerState.batteryFraction ?? 0;
     n.commMargin = fv.commState.margin; n.commLink = fv.commState.link ? 1 : 0; n.commRange = fv.commState.range; n.data = fv.dataStored;
     n.lat = ll.lat / DEG; n.lon = ll.lon / DEG;
@@ -1442,6 +1462,7 @@ export class Simulation {
         finalMass: n.mass, propellantLeft: n.propMass, finalOrbit: { apo: n.apo, peri: n.peri, ecc: n.ecc, incl: n.incl, period: n.period, primary: this.primary.id },
         deltaV: { ...this.budget }, separations: [...this.separations], stageReserves: [...(this.fv.discardLog ?? [])], touchdown: this.touchdown ?? null,
         liftoffTime: this.tLiftoff, dataDownlinkedBits: this.fv.dataDownlinked, linkTimeS: this.commStats.linkTime, steps: this.stepCount,
+        heating: this.heating.summary(), pogo: this.settings.pogo ? { ...this.pogo.peak } : null, gnc: this.fc ? this.fc.summary() : null,
       },
     };
     this.log(status === 'SUCCESS' ? 'MISSION_SUCCESS' : 'MISSION_END', `${status}: ${reason}`, {});

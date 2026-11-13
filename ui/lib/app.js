@@ -52,7 +52,7 @@ export class LiveRun {
     this.app = app;
     const P = app.project;
     this.name = name ?? `${vehicle.name} — ${mission.name} (live)`;
-    this.sim = new Simulation({ vehicle: JSON.parse(JSON.stringify(vehicle)), mission: JSON.parse(JSON.stringify(mission)), environment: { ...P.environment }, settings: { accuracy: P.settings.accuracy, dt: P.settings.dt, recordMax: P.settings.recordMax, j2: !!P.settings.j2, slosh: !!P.settings.slosh, flex: !!P.settings.flex } });
+    this.sim = new Simulation({ vehicle: JSON.parse(JSON.stringify(vehicle)), mission: JSON.parse(JSON.stringify(mission)), environment: { ...P.environment }, settings: { accuracy: P.settings.accuracy, dt: P.settings.dt, recordMax: P.settings.recordMax, j2: !!P.settings.j2, slosh: !!P.settings.slosh, slosh2: !!P.settings.slosh2, flex: !!P.settings.flex, heating: !!P.settings.heating, pogo: !!P.settings.pogo, gnc: !!P.settings.gnc } });
     this.speed = 1; this.paused = false; this.finished = false; this.runId = null; this.lag = 0; this.perfCap = Infinity; this.eff = 1; this.note = '';
     this.thrustRef = 0;
     app.api.ctx.running = true;
