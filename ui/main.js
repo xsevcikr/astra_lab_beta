@@ -20,7 +20,7 @@ const NAV_GROUPS = [
   ['Design', ['designer', 'testbench', 'planner']],
   ['Fly', ['simulation', 'control', 'challenges']],
   ['Understand', ['analysis', 'telemetry', 'replay', 'failure', 'requirements']],
-  ['Study', ['experiments', 'trade', 'engineering', 'validation']],
+  ['Study', ['experiments', 'trade', 'engineering', 'validation', 'credibility']],
   ['Project', ['projects', 'history', 'teacher', 'settings']],
 ];
 // [id, expert name, icon, plain name (Beginner mode), shown in Beginner mode without "More tools"]
@@ -28,7 +28,7 @@ const SCREENS = [
   ['home', 'Home', 'H', 'Home', true], ['academy', 'Aerospace Academy', 'A', 'Academy', true], ['ai', 'AI Engineer', 'I', 'AI Helper', true],
   ['designer', 'Vehicle Designer', 'B', 'Build a rocket', true], ['testbench', 'Test bench', 'T', 'Will it work?', true], ['simulation', 'Simulation', 'L', 'Launch it', true], ['challenges', 'Challenges', 'C', 'Challenges', true], ['analysis', 'Engineering Analysis', 'W', 'What happened?', true],
   ['planner', 'Mission Planner', 'P', 'Mission plan', false], ['control', 'Mission Control', 'O', 'Live flight', false], ['telemetry', 'Telemetry', 'D', 'Flight data', false], ['replay', 'Replay', 'Y', 'Replay', false],
-  ['experiments', 'Experiment Lab', 'E', 'Experiments', false], ['engineering', 'Engineering Workbench', 'Q', 'Engineering', false], ['requirements', 'Mission requirements', 'R', 'Did it meet the rules?', false], ['failure', 'Failure analysis', 'F', 'Why did it fail?', false], ['trade', 'Trade study', 'V', 'Compare designs', false],['projects', 'Projects', 'J', 'My projects', false], ['history', 'Design history', 'H', 'Version history', false], ['teacher', 'Teacher mode', 'T', 'Teacher', false], ['validation', 'Validation', 'K', 'Does it match real rockets?', false], ['settings', 'Settings', 'S', 'Settings', true],
+  ['experiments', 'Experiment Lab', 'E', 'Experiments', false], ['engineering', 'Engineering Workbench', 'Q', 'Engineering', false], ['requirements', 'Mission requirements', 'R', 'Did it meet the rules?', false], ['failure', 'Failure analysis', 'F', 'Why did it fail?', false], ['trade', 'Trade study', 'V', 'Compare designs', false],['projects', 'Projects', 'J', 'My projects', false], ['history', 'Design history', 'H', 'Version history', false], ['teacher', 'Teacher mode', 'T', 'Teacher', false], ['validation', 'Validation', 'K', 'Does it match real rockets?', false], ['credibility', 'Credibility', 'U', 'Can I trust it?', false], ['settings', 'Settings', 'S', 'Settings', true],
 ];
 
 // Sidebar icons come from ui/lib/icons.js (one line-icon system for the whole app).

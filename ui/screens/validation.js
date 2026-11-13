@@ -171,7 +171,8 @@ export default {
       page.append(h('div', { class: 'page-head' }, h('div', { class: 'grow' }, h('h1', null, 'Does it match real rockets?'),
         h('p', null, 'We rebuilt three real rockets. Then we flew them here. Further down: real missions.'),
         h('p', { class: 'muted' }, 'Green: close. Red: the model is off.')),
-        h('button', { class: 'btn primary', id: 'val-run-all', disabled: !!S.running || null, onclick: runAll }, 'Fly all three')));
+        h('div', { class: 'val-actions' }, h('button', { class: 'btn primary', id: 'val-run-all', disabled: !!S.running || null, onclick: runAll }, 'Fly all three'),
+          h('button', { class: 'btn', id: 'val-to-credibility', onclick: () => app.navigate('credibility') }, 'Error bars and credibility'))));
       page.append(h('details', { class: 'more val-tol' }, h('summary', null, 'How we decide "matches"'),
         h('p', null, h('b', null, `±${TOLERANCE_NOTE.input.tol * 100}% for the build: `), TOLERANCE_NOTE.input.why),
         h('p', null, h('b', null, `±${TOLERANCE_NOTE.flight.tol * 100}% for the flight: `), TOLERANCE_NOTE.flight.why),
