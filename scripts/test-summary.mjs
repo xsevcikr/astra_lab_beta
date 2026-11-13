@@ -16,9 +16,10 @@ if (junit && existsSync(junit)) {
 if (lcov && existsSync(lcov)) {
   const per = {}; let file = null, lf = 0, lh = 0;
   for (const ln of readFileSync(lcov, 'utf8').split('\n')) {
-    if (ln.startsWith('SF:')) file = ln.slice(3).replace(/\\/g, '/').replace(/^.*?\/(src|physics|mission|ai|data)\//, '$1/');
-    else if (ln.startsWith('LF:')) { const n = +ln.slice(3); lf += n; per[file] = { lf: n, lh: 0 }; }
-    else if (ln.startsWith('LH:')) { const n = +ln.slice(3); lh += n; if (per[file]) per[file].lh = n; }
+    // LF and LH may come in either order inside a record
+    if (ln.startsWith('SF:')) { file = ln.slice(3).replace(/\\/g, '/').replace(/^.*?\/(src|physics|mission|ai|data)\//, '$1/'); per[file] = { lf: 0, lh: 0 }; }
+    else if (ln.startsWith('LF:') && per[file]) { const n = +ln.slice(3); lf += n; per[file].lf = n; }
+    else if (ln.startsWith('LH:') && per[file]) { const n = +ln.slice(3); lh += n; per[file].lh = n; }
   }
   const top = {}; for (const [f, v] of Object.entries(per)) { const k = f.split('/')[0]; (top[k] ??= { lf: 0, lh: 0 }); top[k].lf += v.lf; top[k].lh += v.lh; }
   L.push(`Line coverage of the code the tests load: **${lf ? ((100 * lh) / lf).toFixed(1) : '0'} %** (${lh} of ${lf} lines).`, '', '| Folder | Lines covered |', '|---|---|');
