@@ -5,9 +5,14 @@
 // declination, IAU values) and turned from the root frame by frameMatrix(id). Earth's frame is the equatorial J2000 frame, so the Earth is
 // tilted 23.44 deg against its orbit, and the Moon's orbit (5.145 deg to the ecliptic) is 18 to 29 deg from the Earth's equator, as in reality.
 // bodyStateRelParent() returns the state in the PARENT's frame; bodyStateAbs() returns the heliocentric root-frame state.
-// Body orbits use two-body Kepler elements (the Moon also has its secular node regression and apsidal advance).
+// Body positions: the Earth, Moon and Mars come from the JPL DE440 ephemeris (physics/ephemeris.js, bundled offline, 1950-2100),
+// with t = TDB seconds after J2000.0 (physics/time.js). Outside that span, for bodies without DE440 data, or with
+// setEphemerisModel('kepler'), the two-body Kepler elements below are used (the Moon also has its secular node regression and
+// apsidal advance). The Earth's rotation angle is the IAU Earth rotation angle of UT1 (physics/time.js earthRotationAngle).
 import { DEG, AU, SOLAR_CONSTANT } from './constants.js';
 import { Atmosphere } from './atmosphere.js';
+import { ephemerisState, ephemerisCovers } from './ephemeris.js';
+import { earthRotationAngle } from './time.js';
 
 /** dataSource: 'real' | 'estimated' | 'user' | 'fictional' (see documentation/DATA-LABELS.md) */
 const BODY_DEFS = [
@@ -18,8 +23,8 @@ const BODY_DEFS = [
   },
   {
     id: 'earth', name: 'Earth', type: 'planet', parent: 'sun', dataSource: 'real',
-    mu: 3.986004418e14, radius: 6378137, j2: 1.08263e-3, j3: -2.5327e-6, j4: -1.6196e-6, rotationPeriod: 86164.0905, pole: { ra: 0, dec: 90 }, rotation0: 280.46061837,   // Earth rotation angle at J2000.0 (IAU 2006 ERA)
-    orbit: { a: 1.495978707e11, e: 0.0167086, i: 0, raan: 0, argp: 102.94719, M0: 357.51716 },
+    mu: 3.986004418e14, radius: 6378137, j2: 1.08263e-3, j3: -2.5327e-6, j4: -1.6196e-6, rotationPeriod: 86164.0905, pole: { ra: 0, dec: 90 }, rotation0: 280.46061837, rotationModel: 'era',   // ERA at J2000.0 UT1 (Kepler model); 'era' = IAU ERA of UT1 (DE440 model)
+    orbit: { a: 1.495978707e11, e: 0.0167086, i: 0, raan: 0, argp: 102.94719, M0: 357.51716 }, ephemeris: 'earth',
     atmosphere: { model: 'us76', height: 150000, dragHeight: 1000000 },
     surface: { temperature: 288, tDay: 305, tNight: 275, albedo: 0.30, irFlux: 237, friction: 0.7, terrainAmplitude: 150, terrainWavelength: 30000 },
   },
@@ -27,14 +32,14 @@ const BODY_DEFS = [
     id: 'moon', name: 'Moon', type: 'moon', parent: 'earth', dataSource: 'real',
     mu: 4.9028e12, radius: 1737400, rotationPeriod: 2360591.5, atmosphere: { model: 'none' },
     pole: { ra: 269.9949, dec: 66.5392 },   // IAU mean lunar pole (without the libration terms): within 0.03 deg of the ecliptic pole; the real axis is tilted 1.54 deg to it and precesses
-    orbit: { a: 3.84399e8, e: 0.0549, i: 5.145, raan: 125.08, argp: 318.15, M0: 134.963, raanRate: -0.0529538, argpRate: 0.164357 },   // J2000 mean elements (Meeus), deg and deg/day; the node regresses once per 18.6 years
+    orbit: { a: 3.84399e8, e: 0.0549, i: 5.145, raan: 125.08, argp: 318.15, M0: 134.963, raanRate: -0.0529538, argpRate: 0.164357 }, ephemeris: 'moon',   // J2000 mean elements (Meeus), deg and deg/day; the node regresses once per 18.6 years
 
     surface: { temperature: 250, tDay: 390, tNight: 100, albedo: 0.12, irFlux: 1.3, friction: 0.55, rollingResistance: 0.16, roughness: 0.5, terrainAmplitude: 400, terrainWavelength: 20000, regolithCohesion: 500 },
   },
   {
     id: 'mars', name: 'Mars', type: 'planet', parent: 'sun', dataSource: 'real',
     mu: 4.2828372e13, radius: 3389500, j2: 1.96045e-3, rotationPeriod: 88642.66, pole: { ra: 317.68143, dec: 52.8865 },
-    orbit: { a: 2.279392e11, e: 0.0934, i: 1.85, raan: 49.558, argp: 286.483, M0: 19.4125 },
+    orbit: { a: 2.279392e11, e: 0.0934, i: 1.85, raan: 49.558, argp: 286.483, M0: 19.4125 }, ephemeris: 'mars',
     atmosphere: { model: 'glenn-mars', height: 120000 },
     surface: { temperature: 210, tDay: 280, tNight: 150, albedo: 0.25, irFlux: 55, friction: 0.6, rollingResistance: 0.13, roughness: 0.4, terrainAmplitude: 500, terrainWavelength: 15000, regolithCohesion: 800 },
   },
@@ -117,10 +122,29 @@ function perifocalToInertial(x, y, i, raan, argp) {
   return [r11 * x + r12 * y, r21 * x + r22 * y, r31 * x + r32 * y];
 }
 
-/** Position & velocity of a body relative to its parent at time t [s since epoch]. */
+// ---------- ephemeris model ----------
+// 'de440' (default): JPL DE440 for bodies with an `ephemeris` key whose parent is the DE440 centre (Moon: Earth; planets: Sun), and the
+// IAU Earth rotation angle of UT1. 'kepler': the analytic elements and the uniform rotation of 2.7 and earlier, for reproducing old runs.
+const DE440_CENTRE = { moon: 'earth', earth: 'sun', mars: 'sun', venus: 'sun', jupiter: 'sun', saturn: 'sun', emb: 'sun' };
+let ephemerisModel = 'de440';
+export function setEphemerisModel(m) { if (m !== 'de440' && m !== 'kepler') throw new Error(`Unknown ephemeris model: ${m}`); ephemerisModel = m; }
+export const getEphemerisModel = () => ephemerisModel;
+/** Which model gives this body's position at time t: 'de440' | 'kepler' | 'fixed'. */
+export function ephemerisSource(id, t) {
+  const b = getBody(id);
+  if (!b.parent) return 'fixed';
+  return ephemerisModel === 'de440' && b.ephemeris && DE440_CENTRE[b.ephemeris] === b.parent && ephemerisCovers(t) ? 'de440' : (b.elements ? 'kepler' : 'fixed');
+}
+
+/** Position & velocity of a body relative to its parent at time t [TDB s after J2000], written in the parent's own axes. */
 export function bodyStateRelParent(id, t) {
   const b = getBody(id);
-  if (!b.parent || !b.elements) return { r: [0, 0, 0], v: [0, 0, 0] };
+  if (!b.parent) return { r: [0, 0, 0], v: [0, 0, 0] };
+  if (ephemerisSource(id, t) === 'de440') {
+    const s = ephemerisState(b.ephemeris, t);   // root (ecliptic) axes
+    if (s) return { r: fromRoot(b.parent, s.r), v: fromRoot(b.parent, s.v) };
+  }
+  if (!b.elements) return { r: [0, 0, 0], v: [0, 0, 0] };
   const p = getBody(b.parent);
   const { a, e, i, M0 } = b.elements;
   const raan = b.elements.raan + b.elements.raanRate * t, argp = b.elements.argp + b.elements.argpRate * t;
@@ -169,7 +193,12 @@ export function sunDirection(id, t) {
 }
 
 // ---------- body-fixed <-> inertial ----------
-export function rotationAngle(id, t, theta0 = 0) { const b = getBody(id); return theta0 + (b.rotation0 ?? 0) * DEG + b.omega * t; }   // Earth: the true rotation angle at J2000 (t = seconds after J2000)
+/** Rotation angle [rad] of the body's prime meridian from its frame's x axis at time t [TDB s after J2000]. Earth: IAU ERA of UT1. */
+export function rotationAngle(id, t, theta0 = 0) {
+  const b = getBody(id);
+  if (b.rotationModel === 'era' && ephemerisModel === 'de440') return theta0 + earthRotationAngle(t);
+  return theta0 + (b.rotation0 ?? 0) * DEG + b.omega * t;
+}
 
 /** Inertial position of a surface point (lat, lon in radians, radius r). */
 export function surfacePointInertial(id, lat, lon, t, radius) {

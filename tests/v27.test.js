@@ -8,6 +8,7 @@ import { Atmosphere } from '../physics/atmosphere.js';
 import { atmosphere as engAtmosphere } from '../src/engineering/core/atmosphere.js';
 import { Simulation } from '../physics/simulation.js';
 import { readFileSync } from 'node:fs';
+import { convertTime } from '../physics/time.js';
 import './helpers.js';   // registers the airless 'vacearth'
 
 const DEG = Math.PI / 180, DAY = 86400, YEAR = 365.25 * DAY;
@@ -21,8 +22,8 @@ test('the Earth is tilted: the Sun climbs and falls by the obliquity (23.44 deg)
   assert.ok(Math.abs(hi - 23.44) < 0.5 && Math.abs(lo + 23.44) < 0.5, `declination range ${lo.toFixed(2)} .. ${hi.toFixed(2)}`);
 });
 
-test('the Earth rotation angle at J2000 is the true 280.46 deg, and a surface point round-trips through latitude/longitude', () => {
-  assert.ok(Math.abs(rotationAngle('earth', 0) / DEG - 280.46061837) < 1e-6);
+test('the Earth rotation angle at J2000 UT1 is the true 280.46 deg, and a surface point round-trips through latitude/longitude', () => {
+  assert.ok(Math.abs(rotationAngle('earth', convertTime(0, 'UT1', 'TDB')) / DEG - 280.46061837) < 1e-6);   // epoch = TDB, rotation follows UT1 (physics/time.js)
   const r = surfacePointInertial('earth', 28.573 * DEG, -80.649 * DEG, 123456, 6378137), ll = latLonFromInertial('earth', r, 123456);
   assert.ok(Math.abs(ll.lat / DEG - 28.573) < 1e-9 && Math.abs(ll.lon / DEG + 80.649) < 1e-9);
 });
@@ -34,7 +35,7 @@ test('the Moon orbits 5.145 deg from the ecliptic, so 18 to 29 deg from the Eart
     const incl = Math.acos(h[2] / len(h)) / DEG;
     lo = Math.min(lo, incl); hi = Math.max(hi, incl);
     const hRoot = cross(toRoot('earth', s.r), toRoot('earth', s.v)), inclEcl = Math.acos(hRoot[2] / len(hRoot)) / DEG;
-    assert.ok(Math.abs(inclEcl - 5.145) < 1e-6, `ecliptic inclination ${inclEcl}`);
+    assert.ok(inclEcl > 4.95 && inclEcl < 5.35, `ecliptic inclination ${inclEcl}`);   // DE440: 5.145 deg mean, +-0.15 deg solar perturbation
   }
   assert.ok(lo > 17.8 && lo < 18.8 && hi > 28 && hi < 29, `equatorial inclination range ${lo.toFixed(2)} .. ${hi.toFixed(2)}`);
 });
