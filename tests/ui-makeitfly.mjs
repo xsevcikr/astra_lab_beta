@@ -9,7 +9,7 @@ try { ({ chromium } = require('playwright')); } catch { try { ({ chromium } = re
 let lastStep = 'start'; const results = []; const check = (name, ok, extra = '') => { lastStep = name; results.push([name, ok]); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`); };
 const server = await startServer(8179);
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await (await browser.newContext({ viewport: { width: 1360, height: 800 } })).newPage();
+const page = await (await browser.newContext({ viewport: { width: 1360, height: 800 }, reducedMotion: 'reduce' })).newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(`${e.message} (after: ${lastStep})`)); page.on('console', (m) => { if (m.type() === 'error') errors.push(`${m.text()} (after: ${lastStep})`); });
 const build300 = () => page.evaluate(async () => { const a = window.astraApp; const { rocketBuildPlan } = await import('/ai/design.js'); const { applyPlan } = await import('/ai/plan.js'); await applyPlan(a.session, rocketBuildPlan({ payloadMass: 300, altitude: 200000, dvMargin: 1.05 })); a.emit('design', 'test'); });
 try {
@@ -66,8 +66,12 @@ try {
   check('new rocket: the check flight ends with a plain result', /flew|works|does not work/i.test(await page.locator('#tf-result').innerText()), (await page.locator('#tf-result').innerText()).replace(/\n/g, ' '));
   await page.click('#tf-open'); await page.waitForTimeout(300);
   check('new rocket: the builder opens after the check flight', (await page.evaluate(() => window.__then)) === 1);
+  // Skip must be pressed while the test flight is still running. The same design was just flown, so the real flight can end
+  // before the click (seen on CI: the button was detached mid-click); hold the flight open so the test does not race it.
+  await page.evaluate(() => { const a = window.astraApp; a.__realMakeItFly = a.makeItFly; a.makeItFly = () => new Promise(() => {}); });
   await page.evaluate(async () => { const { createVehicleDialog } = await import('/ui/lib/create.js'); createVehicleDialog(window.astraApp, 'rocket', { then: () => { window.__then++; } }); });
   await page.click('.modal-foot .btn.primary'); await page.waitForSelector('#tf-skip'); await page.click('#tf-skip'); await page.waitForTimeout(500);
+  await page.evaluate(() => { const a = window.astraApp; a.makeItFly = a.__realMakeItFly; delete a.__realMakeItFly; });
   check('new rocket: Skip stops at once and opens the builder', (await page.evaluate(() => window.__then)) === 2 && (await page.locator('#tf-progress').count()) === 0 && !!(await page.evaluate(() => window.astraApp.project.vehicle)));
   check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 } catch (e) { check('test run completed', false, e.message); }
