@@ -209,7 +209,7 @@ Wind, gusts and the air density can be set per project (Mission Planner, Environ
 - Electron burns end 16 to 24% early. The model uses constant thrust and a fitted pitch table, and the stage masses are estimates, so the burn times are not reproduced. The orbit is reached anyway.
 - Curiosity touches down 43 s early (see above): no divert manoeuvre and no sky-crane phase.
 
-- Atlas V: since 2.4 the RD-180 throttles back (to 82% after 115 s) so the core burns for the published 253 s; the throttle value is tuned, not published. The single-burn flight reaches the 185 km low point but its high point overshoots (about 182 x 427 km), because the real Centaur burns twice; the simulator therefore grades the flight FAILURE even though all three rows pass.
+- Atlas V: since 2.4 the RD-180 throttles back (to 82% after 115 s) so the core burns for the published 253 s; the throttle value is tuned, not published. Since 2.9 the Centaur burns twice: burn 1 flies explicit guidance (reach 185 km with zero vertical speed) into a 160 x 185 km parking orbit, the stage coasts once around the Earth and burn 2 circularises at the high point. The flight ends at about 182 x 193 km and is graded SUCCESS (before: one burn, about 182 x 427 km, FAILURE). The parking orbit and the one-orbit coast are a choice of this model; the page gives no Centaur timeline.
 - Ariane 5 ECA: both burn times are within 4% but the payload row is only the necessary condition (200 km orbit, not GTO), and the solid-booster Isp is assumed.
 - New Shepard (older note, see above): the page does not give Isp, propellant or dry mass, so they were assumed or derived; the 2.5 throttle tuning is what makes the apogee match.
 

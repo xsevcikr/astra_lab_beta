@@ -22,6 +22,7 @@ try {
   await page.waitForSelector('#weather-editor', { timeout: 8000 }).catch(() => {});
   check('planner has the weather and gravity editor', await page.locator('#weather-editor').count() === 1);
   check('2.5: the sounding button, warm-day switch and second slosh mode are there', await page.locator('#sounding-import').count() === 1 && await page.locator('#env-tropical').count() === 1 && await page.locator('#env-slosh2').count() === 1);
+  check('2.9: detailed heating, pogo and flight-computer switches are there', await page.locator('#env-heating').count() === 1 && await page.locator('#env-pogo').count() === 1 && await page.locator('#env-gnc').count() === 1);
   const inputs = page.locator('#weather-editor input[type=number]');
   await inputs.nth(0).fill('12'); await inputs.nth(0).press('Tab'); await page.waitForTimeout(300);
   check('wind speed is stored in the project environment', await page.evaluate(() => window.astraApp.project.environment.wind?.speed === 12));

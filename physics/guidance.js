@@ -179,7 +179,18 @@ function insertion(g, c, fr) {
   const aT = Math.max(c.thrustAccel ?? 1, 0.1);
   const tauH = p.tauH ?? 60, tauV = p.tauV ?? 20;
   const vrDes = clamp((rT - r) / tauH, -50, p.vrMax ?? 400);
-  const aRadial = (vrDes - vr) / tauV + c.mu / (r * r) - (vt * vt) / r;
+  let aRadial = (vrDes - vr) / tauV + c.mu / (r * r) - (vt * vt) / r;
+  let tgo = null;
+  if (p.explicit) {
+    // 2.9 explicit radial guidance (the polynomial "E-guidance" form also used for landing): reach r = rT with zero vertical speed when the
+    // horizontal speed reaches circular speed. Time to go from the velocity still to be gained at the present thrust acceleration (re-solved
+    // every step, so the growing acceleration of the lightening stage is followed). A low-thrust upper stage then climbs over the top and comes
+    // back down to the target height instead of holding a high altitude at a steep pitch (the gravity loss of the old law).
+    const dvh = Math.max(Math.hypot(Math.sqrt(c.mu / rT) * (p.speedFraction ?? 1) - vt, vr), 1);   // velocity still to gain: horizontal deficit and the vertical speed to cancel
+    const ve = c.exhaustVelocity ?? 0;                     // with the exhaust velocity the lightening stage is accounted for (rocket equation)
+    tgo = clamp(ve > 100 ? (ve / aT) * (1 - Math.exp(-dvh / ve)) : dvh / aT, p.minTgo ?? 15, 3000);
+    aRadial = (6 * (rT - r)) / (tgo * tgo) - (4 * vr) / tgo + c.mu / (r * r) - (vt * vt) / r;
+  }
   const sinPhi = clamp(aRadial / aT, p.minSinPitch ?? -0.12, 0.98);
   let phi = Math.asin(sinPhi);
   if (p.holdUntilAccel != null) {
@@ -191,7 +202,7 @@ function insertion(g, c, fr) {
     if (lit) { const lim = (p.pitchRate ?? 90) * DEG * dt; g.lastPhi += clamp(phi - g.lastPhi, -lim, lim); }
     phi = g.lastPhi;
   }
-  return { dir: norm(add(scale(up, Math.sin(phi)), scale(hdir, Math.cos(phi)))), throttle: null, info: { phase: 'insertion', pitch: phi / DEG, vrDes } };
+  return { dir: norm(add(scale(up, Math.sin(phi)), scale(hdir, Math.cos(phi)))), throttle: null, info: { phase: 'insertion', pitch: phi / DEG, vrDes, tgo } };
 }
 
 // ---------------- powered descent / landing ----------------

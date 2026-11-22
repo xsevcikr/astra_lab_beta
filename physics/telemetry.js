@@ -31,6 +31,9 @@ export const CHANNELS = [
   ['groundSpeed', 'Ground speed (rover)', 'm/s', 'rover'], ['odometer', 'Distance driven', 'm', 'rover'], ['slip', 'Wheel slip', '', 'rover'], ['terrainSlope', 'Terrain slope along path', 'deg', 'rover'],
   ['sloshN', 'Slosh force on the tanks', 'N', 'structure'], ['flexAmp', 'Bending of the structure (tail sideways)', 'm', 'structure'], ['bank', 'Bank angle (lifting entry)', 'deg', 'aero'],
   ['sideSlope', 'Side slope', 'deg', 'rover'], ['heading', 'Heading', 'deg', 'rover'], ['drivePower', 'Drive power', 'W', 'rover'], ['tipMargin', 'Rollover margin', '', 'rover'], ['sunElev', 'Sun elevation', 'deg', 'environment'], ['surfTemp', 'Surface temperature', 'K', 'environment'],
+  // 2.9 heating, pogo, flight control
+  ['heatRad', 'Radiative heat flux (shock layer)', 'W/m2', 'thermal'], ['heatLoad', 'Heat load at the stagnation point', 'J/m2', 'thermal'], ['finTemp', 'Fin leading-edge temperature', 'K', 'thermal'],
+  ['recession', 'Heat-shield recession', 'm', 'thermal'], ['pogoG', 'Pogo oscillation at the engine', 'g', 'structure'], ['gimbalCmdErr', 'Gimbal servo lag (command minus actual)', 'deg', 'propulsion'],
 ];
 export const CHANNEL_INDEX = Object.fromEntries(CHANNELS.map((c, i) => [c[0], i]));
 export const CHANNEL_META = Object.fromEntries(CHANNELS.map((c) => [c[0], { id: c[0], label: c[1], unit: c[2], group: c[3] }]));
@@ -112,7 +115,7 @@ export class TelemetryRecorder {
   toBinary() {
     const header = JSON.stringify({ magic: 'ASTRA-TLM', version: 1, count: this.count, channels: CHANNELS.map((c) => c[0]), decimation: this.decimation });
     const hb = new TextEncoder().encode(header);
-    const pad = (4 - ((4 + hb.length) % 4)) % 4;
+    const pad = (8 - ((4 + hb.length) % 8)) % 8;   // the columns are Float64: their start must be a multiple of 8 bytes (2.9: a 4-byte pad broke when the header grew)
     const bytes = new Uint8Array(4 + hb.length + pad + this.count * N * 8);
     new DataView(bytes.buffer).setUint32(0, hb.length + pad, true);
     bytes.set(hb, 4);
