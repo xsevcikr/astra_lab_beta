@@ -111,7 +111,7 @@ test('delta-v budget closes: ideal - losses = speed gained', () => {
   near(b.lossFraction, (944 + 62.5 + 1139.6) / 9540, 1e-9);
 });
 
-test('date conversion: epoch 0 is J2000', () => {
-  assert.equal(M.epochToDate(0).toISOString(), '2000-01-01T12:00:00.000Z');
-  near(M.dateToEpoch('2000-01-02T12:00:00Z'), 86400, 1e-12);
+test('date conversion: epoch 0 is J2000.0 TDB (11:58:55.816 UTC), one UTC day later is 86400 s later', () => {
+  assert.equal(M.epochToDate(0).toISOString(), '2000-01-01T11:58:55.816Z');
+  near(M.dateToEpoch('2000-01-02T12:00:00Z') - M.dateToEpoch('2000-01-01T12:00:00Z'), 86400, 1e-6);
 });

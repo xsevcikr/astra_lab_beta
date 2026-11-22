@@ -13,6 +13,7 @@ import { dot, cross, len, sub, scale } from './vec.js';
 import { getBody, bodyStateAbs } from './bodies.js';
 import { escapeBurnDv, circularSpeed, visViva, orbitalPeriod, hohmann, planeChangeDv, stumpC, stumpS } from './orbital.js';
 import { DEG } from './constants.js';
+import { epochToDate as timeEpochToDate, utcToEpoch } from './time.js';
 
 export { planeChangeDv };
 
@@ -90,11 +91,10 @@ export function deltaVBudget({ ideal, gravity, drag, steering }, vInitial, vFina
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Dates (the ephemerides use t = 0 at the J2000 epoch: 2000-01-01 12:00)
+// Dates: the epoch t is TDB seconds after J2000.0 (physics/time.js); calendar dates are UTC with leap seconds
 // ---------------------------------------------------------------------------------------------------------------
-const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
-export const epochToDate = (t) => new Date(J2000_MS + t * 1000);
-export const dateToEpoch = (d) => ((d instanceof Date ? d.getTime() : Date.parse(d)) - J2000_MS) / 1000;
+export const epochToDate = (t) => timeEpochToDate(t);
+export const dateToEpoch = (d) => utcToEpoch(d);
 const DAY = 86400;
 
 // ---------------------------------------------------------------------------------------------------------------

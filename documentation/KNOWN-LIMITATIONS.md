@@ -12,7 +12,7 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 
 ## Physics scope
 
-* Bodies: Sun, Earth, Moon, Mars only, with Keplerian (two-body) ephemerides and patched-conic transfers. No other planets, no N-body dynamics, no solar-radiation pressure.
+* Bodies: Sun, Earth, Moon, Mars only, with JPL DE440 positions for 1950-2100 (Keplerian elements outside that span) and patched-conic transfers. No other planets, no N-body dynamics, no solar-radiation pressure.
 * Monte Carlo covers thrust, Isp, propellant, structural and payload mass. There are no winds, density variations, guidance or sensor errors, so a high success probability here does not mean a high real-world reliability.
 * Rigid bodies. No structural flexing, propellant slosh, engine chamber dynamics, combustion instability, wind, weather or turbulence.
 * Aerodynamics are engineering-level tables and slender-body formulas, not CFD or wind-tunnel data. Heating is stagnation-point Sutton–Graves with lumped thermal capacity. Structural load is a ratio against per-component strength, not a finite-element analysis.
@@ -127,8 +127,8 @@ Read this before you rely on any number. ASTRA LAB is a simplified engineering l
 - Engine rumble and countdown sounds are synthesised, not recorded.
 
 ## Added in 2.7 (fixes from the engineering audit, see CHANGELOG-2.7.md)
-* Frames: the root frame is the J2000 ecliptic and every body has its own spin-axis frame, but there is still no precession or nutation, no polar motion and no UTC/TAI/TT/TDB distinction. The Earth rotation angle is the mean J2000 value plus uniform rotation. Mars and the Moon use the IAU mean pole with an arbitrary prime-meridian offset, so their longitudes are not the official ones.
-* The Moon's elements are fixed J2000 mean elements with secular node regression and perigee advance. There are no short-period lunar perturbations (evection, variation), so its position is good to about a degree or two, not arc-seconds. No DE440 ephemerides yet.
+* Frames: the root frame is the J2000 ecliptic and every body has its own spin-axis frame, but there is still no precession or nutation and no polar motion: the Earth's axes are the J2000 equator (EME2000), so in 2026 a launch site sits about 0.36 deg away from where a full GCRF model puts it. Time scales UTC/TAI/TT/TDB/GPS/UT1 are handled (physics/time.js); the Earth rotation angle is the IAU ERA of UT1, with UT1 from a DeltaT table good to about 0.1 s unless a measured DUT1 is given. Mars and the Moon use the IAU mean pole with an arbitrary prime-meridian offset, so their longitudes are not the official ones.
+* The Moon, Earth and Mars come from a compact fit of JPL DE440 (Moon within 40 m, Earth 90 m, Mars 0.6 km of the JPL kernel) for 1950-2100. Outside that span the old mean Kepler elements are used, and they are poor: by 2026 the Kepler Moon had drifted to the far side of its orbit (about 700,000 km off). Venus, Jupiter and Saturn positions are bundled but no body uses them yet.
 * Drag is computed to 1000 km on Earth. In the long coast steps a fixed Cd of 2.2 on the end-on cross-section is used and the attitude is ignored; there is no solar-cycle or geomagnetic variation of the upper atmosphere (US76 is a mean). Orbit lifetime is therefore indicative.
 * Precise gravity (J2, J3, J4) and the optional Sun and Moon pull (`settings.thirdBody`) are off by default. Third-body positions are held constant within a step. No higher harmonics, tides, solar radiation pressure or relativity.
 * Pitch damping uses the same normal-force slope and centre of pressure as the static model. The body centre of pressure is still mid-length (a move to the nose broke validated launchers); a per-vehicle aero database is needed.
