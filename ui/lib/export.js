@@ -1,6 +1,6 @@
 // Exports and the small amount of session state the professional screens share (requirements, last trade study, last applied fix).
 import { saveFile, pickFile } from './widgets.js';
-import { exportOEM, exportSpiceText, parseEphemeris, samplesOf, compareEphemeris } from '../../src/core/ccsds.js';
+import { exportOEM, exportSpiceText, exportSpk, exportOPM, parseEphemerisBytes, samplesOf, compareEphemeris } from '../../src/core/ccsds.js';
 import { toast } from './dom.js';
 import { runMetrics } from '../../src/core/run-analysis.js';
 import { defaultRequirements, applyOverrides, evaluateRequirements } from '../../src/core/requirements.js';
@@ -67,16 +67,25 @@ export async function exportEphemeris(app, runId, kind = 'oem') {
   try {
     const r = await app.getRun(runId);
     if (kind === 'spice') return saveFile(app, `${base(r.record)}-trajectory.spice.txt`, exportSpiceText(r.record, r.telemetry), 'text/plain');
+    if (kind === 'spk') return saveFile(app, `${base(r.record)}.bsp`, await exportSpk(r.record, r.telemetry), 'application/octet-stream');
+    if (kind === 'oem-xml') return saveFile(app, `${base(r.record)}.oem.xml`, exportOEM(r.record, r.telemetry, { format: 'xml' }), 'application/xml');
+    if (kind === 'oem-tdb') return saveFile(app, `${base(r.record)}-tdb.oem`, exportOEM(r.record, r.telemetry, { timeSystem: 'TDB' }), 'text/plain');
+    if (kind === 'opm') {
+      const S = samplesOf(r.telemetry, { maxSamples: 2 }); const last = S[S.length - 1]; if (!last) throw new Error('This flight has no recorded path.');
+      const mass = r.telemetry.column?.('mass')?.[r.telemetry.count - 1];
+      return saveFile(app, `${base(r.record)}-final-state.opm`, exportOPM(r.record, { epoch: (r.record.environment?.epoch ?? 0) + last.t, r: last.r, v: last.v, mass }), 'text/plain');
+    }
     return saveFile(app, `${base(r.record)}.oem`, exportOEM(r.record, r.telemetry), 'text/plain');
   } catch (e) { toast(`Export failed: ${e.message}`, 'bad', 8000); return null; }
 }
-/** Pick an OEM or SPICE-text trajectory and compare it with this flight; returns the comparison (or null). */
+/** Pick an OEM (KVN or XML), SPICE text or binary SPK trajectory and compare it with this flight; returns the comparison (or null). */
 export async function compareWithEphemeris(app, runId) {
-  const f = await pickFile('.oem,.txt,.spice,.csv'); if (!f) return null;
+  const f = await pickFile('.oem,.xml,.bsp,.txt,.spice,.csv', { binary: true }); if (!f) return null;
   try {
-    const ref = parseEphemeris(f.text), r = await app.getRun(runId);
+    const bytes = f.bytes ?? new TextEncoder().encode(f.text ?? '');
+    const ref = await parseEphemerisBytes(bytes), r = await app.getRun(runId);
     const cmp = compareEphemeris(samplesOf(r.telemetry, { maxSamples: 4000 }), r.record.environment?.epoch ?? 0, ref);
     if (!cmp) throw new Error('The file and this flight do not cover the same times. The times in the file must lie inside the flight (the flight starts at its mission epoch, set in the Planner).');
-    return { file: f.name, ref: { object: ref.object, center: ref.center, frame: ref.frame, n: ref.samples.length }, ...cmp };
+    return { file: f.name, ref: { object: ref.object, center: ref.center, frame: ref.frame, kind: ref.kind, timeSystem: ref.timeSystem, segments: ref.segments.length, n: ref.samples.length }, ...cmp };
   } catch (e) { toast(`Comparison failed: ${e.message}`, 'bad', 9000); return null; }
 }

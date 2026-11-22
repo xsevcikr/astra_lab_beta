@@ -45,7 +45,7 @@ export default {
     }
     function ephResult(c) {
       const km = (m) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(1)} m`);
-      return h('div', { class: 'callout info', id: 'eph-result', style: { marginTop: '8px' } }, h('b', null, `Comparison with ${c.file}`), h('div', null, `${c.ref.object} (${c.ref.center}, ${c.ref.frame}), ${c.ref.n} lines. Compared over ${(c.spanS / 60).toFixed(1)} minutes of flight (${c.n} points).`),
+      return h('div', { class: 'callout info', id: 'eph-result', style: { marginTop: '8px' } }, h('b', null, `Comparison with ${c.file}`), h('div', null, `${c.ref.object} (${c.ref.center}, ${c.ref.frame}${c.ref.timeSystem ? `, ${c.ref.timeSystem} time tags` : ''}${c.ref.segments > 1 ? `, ${c.ref.segments} segments` : ''}), ${c.ref.n} ${c.ref.kind === 'spk' ? 'samples from the SPICE kernel' : 'lines'}. Compared over ${(c.spanS / 60).toFixed(1)} minutes of flight (${c.n} points).`),
         h('div', null, `Largest position difference ${km(c.maxPosErrM)} at ${c.atMaxPosS.toFixed(0)} s; typical (rms) ${km(c.rmsPosErrM)}; largest speed difference ${c.maxVelErrMs.toFixed(2)} m/s.`),
         h('div', { class: 'muted', style: { fontSize: '12px' } }, 'The frames are treated as the same. Differences below a few hundred metres are not meaningful because ASTRA LAB\'s inertial frame is simplified (no precession, nutation or polar motion).'));
     }
@@ -64,9 +64,12 @@ export default {
       const tm = h('button', { class: 'btn std-only', id: 'exp-tel-m', title: 'A MATLAB / Octave script that loads and plots the telemetry CSV (save the CSV next to it)', onclick: () => exportTelemetry(app, S.runId, 'm') }, 'MATLAB script');
       const oem = h('button', { class: 'btn std-only', id: 'exp-oem', title: 'The flight path as a CCSDS Orbit Ephemeris Message (OEM), which other space software reads', onclick: () => exportEphemeris(app, S.runId, 'oem') }, 'Trajectory (CCSDS OEM)');
       const spice = h('button', { class: 'btn std-only', id: 'exp-spice', title: 'The flight path as SPICE-style text: time, position, velocity per line (MKSPK text input)', onclick: () => exportEphemeris(app, S.runId, 'spice') }, 'Trajectory (SPICE text)');
-      const cmpBtn = h('button', { class: 'btn std-only', id: 'exp-compare', title: 'Open an OEM or SPICE-text file from other software and see how far this flight is from it', onclick: async () => { S.ephCmp = await compareWithEphemeris(app, S.runId); render(); } }, 'Compare with a trajectory file…');
+      const oemx = h('button', { class: 'btn std-only', id: 'exp-oem-xml', title: 'The same OEM in the CCSDS XML form (NDM/XML)', onclick: () => exportEphemeris(app, S.runId, 'oem-xml') }, 'Trajectory (OEM XML)');
+      const spk = h('button', { class: 'btn std-only', id: 'exp-spk', title: 'The flight path as a binary SPICE kernel (SPK type 13, TDB), which CSPICE, SpiceyPy, GMAT and Cosmographia open', onclick: () => exportEphemeris(app, S.runId, 'spk') }, 'Trajectory (SPICE SPK .bsp)');
+      const opm = h('button', { class: 'btn std-only', id: 'exp-opm', title: 'The last recorded state as a CCSDS Orbit Parameter Message with Keplerian elements', onclick: () => exportEphemeris(app, S.runId, 'opm') }, 'Final state (CCSDS OPM)');
+      const cmpBtn = h('button', { class: 'btn std-only', id: 'exp-compare', title: 'Open an OEM (text or XML), SPICE-text or binary SPICE SPK file from other software and see how far this flight is from it', onclick: async () => { S.ephCmp = await compareWithEphemeris(app, S.runId); render(); } }, 'Compare with a trajectory file…');
       const asr = h('button', { class: 'btn', id: 'exp-assurance', title: 'Can this result be trusted? Margins, how far the model is validated, odds of success under dispersions, open items, how to reproduce', onclick: () => exportAssurancePdf(app, S.runId) }, 'Assurance review (PDF)');
-      return panel('Post-mission report', h('div', null, h('div', { class: 'row' }, pro, asr, pdf, html, csv, csv2, tcsv, tjson, tpy, tm, oem, spice, cmpBtn, prt), S.ephCmp ? ephResult(S.ephCmp) : null));
+      return panel('Post-mission report', h('div', null, h('div', { class: 'row' }, pro, asr, pdf, html, csv, csv2, tcsv, tjson, tpy, tm, oem, oemx, spice, spk, opm, cmpBtn, prt), S.ephCmp ? ephResult(S.ephCmp) : null));
     }
 
     /** The flight report card: only numbers measured in this run; the rating counts measured goals. */

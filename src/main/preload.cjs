@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('astra', {
   secrets: { get: (n) => inv('secrets:get', n), set: (n, v) => inv('secrets:set', n, v) },
   aiFetch: (req) => inv('ai:fetch', req),
   saveFile: (name, bytes) => inv('file:save', name, bytes),
-  openFile: (accept) => inv('file:open', accept),
+  openFile: (accept, opts) => inv('file:open', accept, opts),
   printHtml: (html) => inv('print:html', html),
   openDataFolder: () => inv('app:openDataFolder'),
   pendingShareLink: () => inv('share:pending'),

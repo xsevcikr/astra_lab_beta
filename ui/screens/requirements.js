@@ -1,13 +1,18 @@
 // Mission requirements checklist: editable limits, each one checked against the selected run (measured values, margins, evidence chart).
 import { h, clear, toast, fmt } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
-import { panel, select } from '../lib/widgets.js';
+import { panel, select, tabs, saveFile, pickFile } from '../lib/widgets.js';
 import { runSelect, currentRunId, noRunHint } from '../lib/runpick.js';
 import { runMetrics, chartSeries } from '../../src/core/run-analysis.js';
 import { summarize, CUSTOM_METRICS, requirementText } from '../../src/core/requirements.js';
 import { CHANNEL_META } from '../../physics/telemetry.js';
 import { drawEvidence } from '../lib/proviews.js';
 import { reqStore, requirementsFor, evaluateFor, exportProPdf } from '../lib/export.js';
+import { buildTrace, changeImpact, traceToCSV, traceToMarkdown, traceToReqIF, parseRequirementsCSV } from '../../src/core/traceability.js';
+import { defaultRequirements } from '../../src/core/requirements.js';
+
+const STATUS_CLS = { VERIFIED: 'pass', FAILED: 'fail', 'NOT VERIFIED': 'na', WAIVED: 'off' };
+const STATUS_WORD = { VERIFIED: 'Verified', FAILED: 'Failed', 'NOT VERIFIED': 'Not verified', WAIVED: 'Waived' };
 
 const DISPLAY = { alt: [1e-3, 'km'], peri: [1e-3, 'km'], apo: [1e-3, 'km'], q: [1e-3, 'kPa'], thrust: [1e-3, 'kN'] };
 const ICON = { PASS: 'check', FAIL: 'cross', 'N/A': null, OFF: null };
@@ -16,7 +21,7 @@ const VERDICT_WORD = { PASS: 'Pass', FAIL: 'Fail', 'N/A': 'No data', OFF: 'Off' 
 export default {
   id: 'requirements', title: 'Mission requirements',
   mount(root, app, params) {
-    const S = { runId: currentRunId(app, params), data: null, m: null, rows: [], open: null, adding: { metric: 'maxG', op: '<=', limit: 6 } };
+    const S = { runId: currentRunId(app, params), data: null, m: null, rows: [], open: null, adding: { metric: 'maxG', op: '<=', limit: 6 }, view: params?.view === 'trace' ? 'trace' : 'checklist', history: null, impactRun: '', busy: false };
     const page = h('div', { class: 'page' }); root.append(page);
     let disposed = false;
     const beginner = () => document.body.dataset.mode === 'beginner';
@@ -30,6 +35,83 @@ export default {
       if (!disposed) render();
     }
     function recompute() { S.rows = evaluateFor(app, S.data, S.m); }
+
+    // ---------------------------------------------------------------- 2.9 traceability view
+    const trace = () => buildTrace({ reqs: requirementsFor(app, S.data.record, S.m), rows: S.rows, record: S.data.record, history: S.history ?? [] });
+    const fileBase = () => S.data.record.name.replace(/[^\w.-]+/g, '_');
+    async function checkAllRuns() {
+      const veh = S.data.record.vehicle?.name; S.busy = true; render();
+      const out = [];
+      try {
+        for (const meta of app.project.runs.slice(-25)) {
+          try { const d = await app.getRun(meta.id); if (d.record.vehicle?.name !== veh) continue; const m = runMetrics(d.record, d.telemetry); out.push({ runId: meta.id, name: d.record.name, created: d.record.created, rows: evaluateFor(app, d, m) }); }
+          catch { /* a damaged recording is skipped */ }
+        }
+        S.history = out; toast(`Checked ${out.length} run${out.length === 1 ? '' : 's'} of ${veh}.`, 'ok');
+      } finally { S.busy = false; if (!disposed) render(); }
+    }
+    async function importCsv() {
+      const f = await pickFile('.csv,.txt'); if (!f) return;
+      try {
+        const res = parseRequirementsCSV(f.text, defaultRequirements(S.data.record, { m: S.m }));
+        const st = reqStore(app);
+        for (const [id, o] of Object.entries(res.overrides)) st.overrides[id] = { ...(st.overrides[id] ?? {}), ...o };
+        st.custom.push(...res.custom); app.markDirty(); recompute(); render();
+        toast(`Imported ${Object.keys(res.overrides).length} limit change(s) and ${res.custom.length} new requirement(s).${res.skipped.length ? ` Skipped ${res.skipped.length}: line ${res.skipped[0].line} (${res.skipped[0].reason}).` : ''}`, res.skipped.length ? 'warn' : 'ok', 10000);
+      } catch (e) { toast(`Could not import: ${e.message}`, 'bad', 9000); }
+    }
+    function traceView() {
+      const T = trace(), c = T.coverage;
+      const cls = c.failed ? 'bad' : c.notVerified.length ? 'warn' : 'ok';
+      const cov = h('div', { class: `pro-summary ${cls}`, id: 'trace-summary' },
+        h('div', { class: 'pro-big' }, h('b', null, `${c.verified} of ${c.requirements}`), ' verified'),
+        h('span', null, `${c.failed} failed, ${c.notVerified.length} not verified${c.waived ? `, ${c.waived} waived` : ''}`),
+        h('span', { class: 'muted' }, `${c.componentsTraced} of ${c.components} parts trace to a requirement`),
+        h('span', { class: 'muted', title: 'T = test (simulated flight), A = analysis, I = inspection, D = demonstration' }, `Method: ${Object.entries(c.byMethod).filter(([, n]) => n).map(([m, n]) => `${m} ${n}`).join(', ')}`),
+        h('div', { class: 'grow' }),
+        h('button', { class: 'btn', id: 'trace-history', disabled: S.busy, title: 'Evaluate the same requirements on every recorded run of this vehicle (up to 25)', onclick: checkAllRuns }, S.busy ? 'Checking…' : 'Check all runs of this vehicle'),
+        h('button', { class: 'btn', id: 'trace-csv', onclick: () => saveFile(app, `${fileBase()}-traceability.csv`, traceToCSV(T), 'text/csv') }, 'Matrix (CSV)'),
+        h('button', { class: 'btn', id: 'trace-md', onclick: () => saveFile(app, `${fileBase()}-traceability.md`, traceToMarkdown(T), 'text/markdown') }, 'Markdown'),
+        h('button', { class: 'btn', id: 'trace-reqif', title: 'ReqIF 1.2: opens in DOORS Next, Polarion, Jama, Capella', onclick: () => saveFile(app, `${fileBase()}.reqif`, traceToReqIF(T), 'application/xml') }, 'ReqIF'),
+        h('button', { class: 'btn', id: 'trace-import', title: 'CSV with columns id or metric, op, limit, label, enabled', onclick: importCsv }, 'Import requirements (CSV)…'));
+      const chips = (i) => {
+        if (i.wholeVehicle) return h('span', { class: 'muted' }, 'whole vehicle');
+        if (!i.allocated.length) return h('span', { class: 'muted' }, 'no matching part');
+        const shown = i.allocated.slice(0, 4);
+        return h('span', { title: `${i.allocationRule}: ${i.allocated.map((a) => a.name).join(', ')}` }, shown.map((a) => h('span', { class: 'pro-chip trace-chip' }, a.name)), i.allocated.length > 4 ? h('span', { class: 'muted' }, ` +${i.allocated.length - 4} more`) : null);
+      };
+      const hist = (i) => (i.history.length ? h('span', { class: 'pro-dots' }, i.history.map((x) => h('span', { class: `pro-dot ${x.verdict === 'PASS' ? 'ok' : x.verdict === 'FAIL' ? 'bad' : ''}`, title: `${x.name}: ${x.verdict}` }))) : h('span', { class: 'muted' }, '-'));
+      const table = h('table', { class: 'pro-table', id: 'trace-table' },
+        h('thead', null, h('tr', null, ['ID', 'Requirement', 'Subsystem', 'Method', 'Allocated to', 'Status', 'Evidence', S.history ? 'All runs' : null].filter((x) => x != null).map((t) => h('th', null, t)))),
+        h('tbody', null,
+          h('tr', { class: 'trace-need' }, h('td', null, h('b', null, T.need.id)), h('td', { colspan: S.history ? 7 : 6 }, h('b', null, T.need.text), h('span', { class: 'muted' }, ` — ${T.need.source}`))),
+          T.items.map((i) => h('tr', { class: `pro-v-${STATUS_CLS[i.status]}`, 'data-trace': i.key },
+            h('td', { style: { whiteSpace: 'nowrap' } }, i.id),
+            h('td', null, i.text, h('div', { class: 'muted', style: { fontSize: '11.5px' } }, i.source)),
+            h('td', null, i.subsystem), h('td', { title: i.methodName }, i.method),
+            h('td', null, chips(i)),
+            h('td', { style: { whiteSpace: 'nowrap' } }, h('span', { class: 'pro-badge' }, i.status === 'VERIFIED' ? icon('check', { size: 13 }) : i.status === 'FAILED' ? icon('cross', { size: 13 }) : ''), STATUS_WORD[i.status]),
+            h('td', null, i.evidence ? [i.evidence.measured, i.evidence.channel ? h('div', { class: 'muted', style: { fontSize: '11.5px' } }, `${CHANNEL_META[i.evidence.channel]?.label ?? i.evidence.channel} at T+${fmt(i.evidence.t ?? 0, 0)} s, margin ${i.evidence.margin}`) : null] : h('span', { class: 'muted' }, 'no evidence in this run')),
+            S.history ? h('td', null, hist(i)) : null))));
+      // change impact against another run
+      const others = app.runList().filter((r) => r.id !== S.runId);
+      let impactBox = null;
+      if (S.impactRun && S.impactData) {
+        const imp = changeImpact(S.impactData.record, S.data.record, requirementsFor(app, S.data.record, S.m));
+        impactBox = h('div', { id: 'trace-impact', class: 'col', style: { marginTop: '8px' } },
+          imp.changes.length ? h('ul', null, imp.changes.map((ch) => h('li', null, h('b', null, ch.what), ch.name ? `: ${ch.name}` : '', ch.detail ? h('span', { class: 'muted' }, ` (${ch.detail})`) : null))) : h('div', { class: 'muted' }, 'The two runs have the same vehicle, mission and environment.'),
+          imp.retest.length ? h('div', null, h('b', null, `Check again (${imp.retest.length}): `), imp.retest.map((r) => h('div', null, `${r.id} — ${r.reason}`))) : null,
+          imp.unaffected.length ? h('div', { class: 'muted' }, `Not affected: ${imp.unaffected.join(', ')}`) : null);
+      }
+      const impact = panel('What changed since another run, and what must be checked again', h('div', { class: 'col' },
+        h('div', { class: 'row' }, h('span', { class: 'muted' }, 'Earlier run'),
+          select([['', 'choose a run…'], ...others.map((r) => [r.id, `${r.name} — ${r.status ?? '?'}`])], S.impactRun, async (id) => { S.impactRun = id; S.impactData = id ? await app.getRun(id).catch(() => null) : null; render(); }, { id: 'trace-impact-run' })),
+        impactBox));
+      const orphans = c.orphans.length ? h('p', { class: 'muted', id: 'trace-orphans' }, `Parts with no requirement (consider adding one, or removing the part): ${c.orphans.map((o) => o.name).join(', ')}.`) : null;
+      return [cov, panel(null, table, { cls: 'flush' }), orphans,
+        h('p', { class: 'muted', style: { fontSize: '12.5px' } }, `Configuration: run ${T.configuration.runName}${T.configuration.inputsFingerprint ? `, input fingerprint ${T.configuration.inputsFingerprint}` : ''}. Every status comes from the recorded run; allocation follows the part types (engines, tanks, rated structure, thermal hardware, power, mobility).`),
+        others.length ? impact : null];
+    }
     function setOverride(id, patch) { const st = reqStore(app); st.overrides[id] = { ...(st.overrides[id] ?? {}), ...patch }; app.markDirty(); recompute(); setTimeout(render, 0); }
 
     function head() {
@@ -37,7 +119,9 @@ export default {
         h('div', { class: 'grow' }, h('h1', { class: 'beginner-only' }, 'Did it meet the rules?'), h('h1', { class: 'std-only' }, 'Mission requirements'),
           h('p', { class: 'beginner-only' }, 'Each row is one rule for your rocket. We check it against the flight.'),
           h('p', { class: 'std-only' }, 'Every limit is compared with a value measured in the selected run, or computed from the design that flew. Edit a limit and the verdict updates.')),
-        app.project.runs.length ? h('div', { class: 'row' }, h('span', { class: 'muted' }, 'Run'), runSelect(app, S.runId, (id) => { S.runId = id; S.open = null; load(); })) : null);
+        app.project.runs.length ? h('div', { class: 'col', style: { alignItems: 'flex-end', gap: '6px' } },
+          h('div', { class: 'row' }, h('span', { class: 'muted' }, 'Run'), runSelect(app, S.runId, (id) => { S.runId = id; S.open = null; S.history = null; load(); })),
+          h('div', { class: 'std-only', id: 'req-view-tabs' }, tabs([['checklist', 'Checklist'], ['trace', 'Traceability']], S.view, (v) => { S.view = v; render(); }))) : null);
     }
 
     function summaryBar() {
@@ -124,6 +208,7 @@ export default {
       clear(page); page.append(head());
       if (!app.project.runs.length) { page.append(noRunHint(app)); return; }
       if (!S.data) { page.append(h('p', { class: 'muted' }, 'Loading…')); return; }
+      if (S.view === 'trace' && !beginner()) { page.append(...traceView().filter(Boolean)); return; }
       page.append(summaryBar(), panel(null, table(), { cls: 'flush' }),
         h('p', { class: 'muted std-only', style: { fontSize: '12.5px' } }, 'Margin is the distance to the limit as a share of the limit; positive means the requirement is met with room to spare. Delivered payload is counted only when the mission goal was reached.'),
         h('div', { class: 'adv-only' }, adder()));
